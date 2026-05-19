@@ -214,7 +214,6 @@ let S = {
   selClub: "driver",
   formData: {},
   analysisScope: "all",
-  aiScope: "all",
   aiResponse: "",
   aiLoading: false,
   ytLinks: []
@@ -241,10 +240,10 @@ function computeStats(rounds){
     if(sc>0){totalScores.push(sc);totalPars.push(par);}
     Object.keys(r.shots).forEach(k=>{
       const[,club]=k.split("_");const d=r.shots[k];
-      if(club==="driver"){driverCount++;if(d.f_dist)driverDists.push(+d.f_dist);if(d.f_shape)driverShapes[d.f_shape]=(driverShapes[d.f_shape]||0)+1;if(d.f_fw==="성공")fwHits++;if(d.f_ob==="OB"||d.f_ob==="워터해저드"||d.f_ob==="페널티구역")obCount++;}
+      if(club==="driver"){driverCount++;if(d.f_dist)driverDists.push(+d.f_dist);if(d.f_shape)driverShapes[d.f_shape]=(driverShapes[d.f_shape]||0)+1;if(d.f_fw==="성공")fwHits++;if(d.f_ob==="OB"||d.f_ob==="워터해저드")obCount++;}
       if(club==="iron"||club==="utility"){ironCount++;if(d.f_gir==="GIR 성공")girCount++;}
       if(club==="putting"){if(d.f_putts)putts.push(+d.f_putts);if(d.f_oneputt==="예")onePutts++;if(d.f_threeputt==="예")threePutts++;if(d.f_length==="짧음")shortC++;else if(d.f_length==="긺")longC++;else if(d.f_length==="적당")okC++;if(d.f_read)lieMap[d.f_read]=(lieMap[d.f_read]||0)+1;}
-      if(club==="approach"){approachCount++;if(d.f_result?.includes("OK존")||d.f_result?.includes("근처"))approachClose++;}
+      if(club==="approach"){approachCount++;if(d.f_result?.includes("근처"))approachClose++;}
     });
   });
   const avgDist=driverDists.length?Math.round(driverDists.reduce((a,b)=>a+b,0)/driverDists.length):0;
@@ -374,6 +373,7 @@ function renderInput(){
     group.row.forEach(f=>{
       html+=`<div class="form-group"><label>${esc(f.label)}</label>`;
       if(f.type==="select"){
+        const onch = f.onchange ? f.onchange : `fd('${f.id}',this.value)`;
         html+=`<select id="f_${f.id}" onchange="fd('${f.id}',this.value);${f.onchange||''}">`;
         f.options.forEach(o=>html+=`<option value="${esc(o)}"${(S.formData[f.id]||"")==o?" selected":""}>${esc(o)||"선택"}</option>`);
         html+=`</select>`;
@@ -404,6 +404,7 @@ function selClub(c){
 }
 function fd(id,val){S.formData[id]=val;}
 function onObChange(val){
+  // OB 또는 페널티구역 선택 시 페어웨이 안착 자동으로 '실패' 설정
   if(val==="OB"||val==="페널티구역"){
     S.formData["f_fw"]="실패";
     const fw=document.getElementById("f_f_fw");
@@ -450,22 +451,19 @@ function renderScore(){
     </div>`;
   });
   const scColor=sc>0?(diff>0?C.red:diff<0?C.green:"#333"):"#aaa";
-  html+=`<div id="total-score-box" style="text-align:right;margin-top:12px"><span style="font-size:13px;color:#888">총 타수: </span><span style="font-size:18px;font-weight:700;color:${scColor}">${sc>0?`${sc}타 (${diff>=0?"+":""}${diff})`:"-"}</span></div>`;
+  html+=`<div style="text-align:right;margin-top:12px"><span style="font-size:13px;color:#888">총 타수: </span><span style="font-size:18px;font-weight:700;color:${scColor}">${sc>0?`${sc}타 (${diff>=0?"+":""}${diff})`:"-"}</span></div>`;
   return html;
 }
 function updScore(idx,field,val){
   const ar=activeRound();if(!ar)return;
   ar.scorecard[idx][field]=field==="note"?val:+val;
   save();
-  
+  // 총 타수만 업데이트
   const sc=ar.scorecard.reduce((s,h)=>s+(h.score||0),0);
   const par=ar.scorecard.reduce((s,h)=>s+h.par,0);
   const diff=sc-par;
   const scColor=sc>0?(diff>0?C.red:diff<0?C.green:"#333"):"#aaa";
-  const el=document.getElementById("total-score-box");
-  if(el){
-    el.innerHTML=`<span style="font-size:13px;color:#888">총 타수: </span><span style="font-size:18px;font-weight:700;color:${scColor}">${sc>0?`${sc}타 (${diff>=0?"+":""}${diff})`:"-"}</span>`;
-  }
+  const el=document.querySelector(".score-row+*+*+*+*+*+*+*+*+*+*+*+*+*+*+*+*+*+*+div[style*='text-align:right']");
 }
 
 // ══════════════════════════════════════════════
@@ -482,6 +480,7 @@ function renderAnalysis(){
 
   const s=computeStats(analysisRounds);
 
+  // 요약 카드
   html+=`<div class="stat-grid">`;
   html+=statCard("분석 라운드",`${analysisRounds.length}회`,s.avgScore?`평균 ${s.avgScore}타 (${s.avgDiff>=0?"+":""}${s.avgDiff})`:"스코어 미입력");
   html+=statCard("드라이버 평균",s.avgDist||"-","미터");
@@ -491,6 +490,7 @@ function renderAnalysis(){
   html+=statCard("OB/해저드",s.obCount||0,`드라이버 ${s.driverCount}홀 중`);
   html+=`</div>`;
 
+  // 추세 차트
   if(s.totalScores.length>1){
     html+=`<div class="card"><div style="font-size:15px;font-weight:600;margin-bottom:10px">라운드별 스코어 추세</div><div class="trend-chart">`;
     const maxD=Math.max(...s.totalScores.map((sc,j)=>sc-s.totalPars[j]));
@@ -506,6 +506,7 @@ function renderAnalysis(){
     html+=`</div></div>`;
   }
 
+  // 드라이버
   html+=`<div class="card"><div style="display:flex;justify-content:space-between;margin-bottom:8px"><span style="font-size:15px;font-weight:600">드라이버</span><span class="badge badge-blue">${s.driverCount}홀</span></div>`;
   if(s.topShape)html+=`<div style="font-size:12px;color:#888;margin-bottom:8px">주요 구질: <strong>${s.topShape[0]}</strong> (${s.topShape[1]}회)</div>`;
   html+=barRow("페어웨이",s.fwPct,C.green);
@@ -513,14 +514,17 @@ function renderAnalysis(){
   html+=barRow("OB 비율",s.driverCount?Math.round(s.obCount/s.driverCount*100):0,C.red);
   html+=`</div>`;
 
+  // 아이언
   html+=`<div class="card"><div style="display:flex;justify-content:space-between;margin-bottom:8px"><span style="font-size:15px;font-weight:600">아이언</span><span class="badge badge-blue">${s.ironCount}홀</span></div>`;
   html+=barRow("GIR",s.girPct,C.blue);
   html+=`</div>`;
 
+  // 어프로치
   html+=`<div class="card"><div style="display:flex;justify-content:space-between;margin-bottom:8px"><span style="font-size:15px;font-weight:600">어프로치</span><span class="badge badge-blue">${s.approachCount}홀</span></div>`;
   html+=barRow("핀 근처",s.approachCount?Math.round(s.approachClose/s.approachCount*100):0,C.amber);
   html+=`</div>`;
 
+  // 퍼팅
   html+=`<div class="card"><div style="display:flex;justify-content:space-between;margin-bottom:8px"><span style="font-size:15px;font-weight:600">퍼팅</span><span class="badge badge-blue">${s.putts.length}홀</span></div>`;
   html+=barRow("1퍼팅률",s.putts.length?Math.round(s.onePutts/s.putts.length*100):0,C.green);
   html+=barRow("3퍼팅률",s.putts.length?Math.round(s.threePutts/s.putts.length*100):0,C.red);
@@ -549,104 +553,170 @@ function setScope(v){S.analysisScope=v;renderContent();}
 const WORKER_URL = "https://golf-ai.songkwangseop78.workers.dev";
 
 function renderAI(){
-  let html=`<div class="ai-intro-card">
-    <div class="ai-intro-title">🤖 AI 맞춤형 골프 코칭</div>
-    <div class="ai-intro-desc">누적된 샷 데이터를 기반으로 AI가 골퍼님의 문제점을 정밀 분석하고 최적의 레슨 방향성을 제안합니다.</div>
+  let scopeOptions=`<option value="all">전체 라운드 합산</option>`;
+  S.rounds.forEach(r=>{
+    scopeOptions+=`<option value="${r.id}"${S.analysisScope==r.id?" selected":""}>${esc(r.date)}${r.courseName?" ("+esc(r.courseName)+")":""}</option>`;
+  });
+
+  let html=`
+  <div class="ai-intro-card">
+    <div class="ai-intro-title">🤖 AI 데이터 기반 맞춤 코칭</div>
+    <p class="ai-intro-desc">라운드 데이터를 기반으로 스코어 패턴, 퍼팅 안정성, 드라이버 정확도 및 미스 경향을 분석하여 맞춤형 골프 코칭 리포트를 제공합니다.</p>
     <div class="ai-scope-wrap">
-      <div class="ai-scope-label">분석 데이터 범위</div>
-      <select class="ai-scope-select" id="ai-scope-select" onchange="S.aiScope=this.value">
-        <option value="all"${S.aiScope==="all"?" selected":""}>전체 라운드 데이터</option>`;
-        S.rounds.forEach(r=>{
-          html+=`<option value="${r.id}"${S.aiScope==r.id?" selected":""}>${esc(r.date)} ${esc(r.courseName)}</option>`;
-        });
-  html+=`</select>
+      <label class="ai-scope-label">분석 범위</label>
+      <select class="ai-scope-select" onchange="setScope(this.value)">${scopeOptions}</select>
     </div>
-    <button class="ai-start-btn" id="ai-btn" onclick="askAI()" ${S.aiLoading?"disabled":""}>AI 분석 리포트 생성하기</button>
+    <button class="ai-start-btn" onclick="runAI()" ${S.aiLoading?"disabled":""}>
+      ${S.aiLoading?"골퍼님의 샷 분석 중...":"AI 코칭 시작하기"}
+    </button>
   </div>`;
 
+  // 로딩
   if(S.aiLoading){
-    html+=`<div class="ai-loading"><div class="ai-spinner"></div><div class="ai-loading-text">골퍼님의 샷 데이터를 분석 중입니다...<br/>잠시만 기다려주세요.</div></div>`;
-  } else if(S.aiResponse){
+    html+=`<div class="ai-loading">
+      <div class="ai-spinner"></div>
+      <p class="ai-loading-text">스윙 패턴 · 퍼팅 안정성 · 미스 경향을<br/>종합 분석하고 있습니다.</p>
+    </div>`;
+    return html;
+  }
+
+  // 결과
+  if(S.aiResponse){
     html+=`<div class="ai-result">
       <div class="ai-report-card">
-        <div class="ai-report-header"><span class="ai-report-title">🎯 AI 정밀 진단 결과</span><span class="ai-confidence">분석 완료</span></div>
+        <div class="ai-report-header">
+          <div class="ai-report-title">📋 AI 전담 코치 진단서</div>
+          <div class="ai-confidence">분석 완료</div>
+        </div>
         <div class="ai-report-body">${esc(S.aiResponse)}</div>
       </div>`;
-    if(S.ytLinks && S.ytLinks.length > 0){
-      html+=`<div class="ai-lesson-card"><div class="ai-lesson-title">📺 추천 맞춤 레슨 영상</div>`;
-      S.ytLinks.forEach(link=>{
-        html+=`<a class="yt-card" href="${esc(link.url)}" target="_blank">
-          <div class="yt-thumb">📺</div>
-          <div class="yt-info"><div class="yt-kw-title">${esc(link.title)}</div><div class="yt-sub">추천 키워드 레슨</div></div>
-          <div class="yt-arrow">이동 ➔</div>
+
+    if(S.ytLinks.length){
+      html+=`<div class="ai-lesson-card">
+        <div class="ai-lesson-title">📺 취약점 보완 추천 레슨</div>
+        <div>`;
+      S.ytLinks.forEach((item,i)=>{
+        const url=`https://www.youtube.com/results?search_query=${encodeURIComponent(item.keyword)}`;
+        html+=`<a class="yt-card" href="${url}" target="_blank" rel="noopener noreferrer">
+          <div class="yt-thumb">▶️</div>
+          <div class="yt-info">
+            <div class="yt-kw-title">${i+1}. ${esc(item.keyword)}</div>
+            <div class="yt-sub">유튜브 레슨 검색 바로가기</div>
+          </div>
+          <div class="yt-arrow">영상 보기 →</div>
         </a>`;
       });
-      html+=`</div>`;
+      html+=`</div></div>`;
     }
     html+=`</div>`;
   }
   return html;
 }
 
-async function askAI(){
-  if(S.rounds.length === 0) { alert("분석할 라운드 데이터가 없습니다."); return; }
-  S.aiLoading = true; S.aiResponse = ""; S.ytLinks = [];
-  renderContent();
+async function runAI(){
+  if(!S.rounds.length){alert("먼저 라운드 데이터를 입력해 주세요.");return;}
+  S.aiLoading=true;S.aiResponse="";S.ytLinks=[];renderContent();
 
-  const targetRounds = S.aiScope === "all" ? S.rounds : S.rounds.filter(r=>r.id == S.aiScope);
-  const stats = computeStats(targetRounds);
+  const analysisRounds=S.analysisScope==="all"?S.rounds:S.rounds.filter(r=>r.id==S.analysisScope);
+  const dataStr=JSON.stringify(analysisRounds.map(r=>({date:r.date,courseName:r.courseName,shots:r.shots,scorecard:r.scorecard})));
 
-  try {
-    const res = await fetch(WORKER_URL, {
-      method: "POST",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({ stats, roundsCount: targetRounds.length })
+  const prompt=`당신은 전문 골프 코치입니다.
+아래는 ${analysisRounds.length}개 라운드의 샷 데이터입니다:
+${dataStr}
+
+다음 항목을 한국어로 분석해 주세요:
+1. 전체 라운드 총평 (라운드 수, 평균 스코어 포함)
+2. 드라이버 분석 - 구질 패턴, 거리, OB/페어웨이 문제점
+3. 우드/유틸리티 분석
+4. 아이언/어프로치 분석 - GIR, OK존/온그린 성공률
+5. 퍼팅 분석 - 거리 감각, 라이 유형별 패턴, 1퍼팅/3퍼팅
+6. 라운드별 추세 (개선/악화)
+7. 가장 큰 문제점 2가지와 개선 드릴 추천
+8. 다음 라운드 포커스 포인트
+이모지 없이 간결하게 작성해 주세요.`;
+
+  const ytPrompt=`너는 골프 코치다. 아래 데이터에서 문제점을 파악하고 유튜브 검색 키워드를 JSON으로만 반환해라. 절대 다른 텍스트 없이 JSON만.
+데이터: ${dataStr}
+반환 형식: {"links":[{"club":"드라이버","problem":"슬라이스 교정","keyword":"골프 드라이버 슬라이스 교정 레슨"}]}
+최대 5개. JSON만.`;
+
+  try{
+    // 분석 먼저
+    const r1=await fetch(WORKER_URL,{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1200,messages:[{role:"user",content:prompt}]})
     });
-    const data = await res.json();
-    S.aiResponse = data.report || "분석 결과를 가져오지 못했습니다.";
-    S.ytLinks = data.youtubeLinks || [];
-  } catch(e) {
-    S.aiResponse = "AI 분석 서버와 통신 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.";
-  } finally {
-    S.aiLoading = false;
+    if(!r1.ok) throw new Error(`서버 오류: ${r1.status}`);
+    const d1=await r1.json();
+    S.aiResponse=d1.content?.map(b=>b.text||"").join("")||"분석 결과를 가져오지 못했습니다.";
+    S.aiLoading=false;
+    renderContent();
+
+    // 유튜브 키워드
+    try{
+      const r2=await fetch(WORKER_URL,{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:600,messages:[{role:"user",content:ytPrompt}]})
+      });
+      const d2=await r2.json();
+      const ytRaw=d2.content?.map(b=>b.text||"").join("").replace(/```json|```/g,"").trim();
+      S.ytLinks=JSON.parse(ytRaw).links||[];
+    }catch{S.ytLinks=[];}
+    renderContent();
+
+  }catch(err){
+    S.aiResponse=`분석 중 오류가 발생했습니다.\n오류: ${err.message}\n\n잠시 후 다시 시도해 주세요.`;
+    S.aiLoading=false;
     renderContent();
   }
 }
 
+
 // ══════════════════════════════════════════════
-// 공통 화면 제어
+// 메인 렌더
 // ══════════════════════════════════════════════
 function renderContent(){
-  const container = document.getElementById("content");
-  if(!container) return;
-  if(S.tab==="rounds") container.innerHTML = renderRounds();
-  else if(S.tab==="input") container.innerHTML = renderInput();
-  else if(S.tab==="score") container.innerHTML = renderScore();
-  else if(S.tab==="analysis") container.innerHTML = renderAnalysis();
-  else if(S.tab==="ai") container.innerHTML = renderAI();
+  const el=document.getElementById("content");
+  switch(S.tab){
+    case"rounds": el.innerHTML=renderRounds(); break;
+    case"input":  el.innerHTML=renderInput();  break;
+    case"score":  el.innerHTML=renderScore();  break;
+    case"analysis":el.innerHTML=renderAnalysis();break;
+    case"ai":     el.innerHTML=renderAI();     break;
+  }
 }
 
-// ── 초기화 실행 ──
+// ══════════════════════════════════════════════
+// PWA & 설치
+// ══════════════════════════════════════════════
+if("serviceWorker"in navigator){
+  navigator.serviceWorker.register("./sw.js").catch(()=>{});
+}
+
+let deferredPrompt=null;
+window.addEventListener("beforeinstallprompt",e=>{
+  e.preventDefault();deferredPrompt=e;
+  const banner=document.getElementById("install-banner");
+  banner.style.display="flex";
+});
+document.getElementById("install-btn").onclick=async()=>{
+  if(!deferredPrompt)return;
+  deferredPrompt.prompt();
+  const{outcome}=await deferredPrompt.userChoice;
+  deferredPrompt=null;
+  document.getElementById("install-banner").style.display="none";
+};
+document.getElementById("install-close").onclick=()=>{
+  document.getElementById("install-banner").style.display="none";
+};
+
+// ══════════════════════════════════════════════
+// 초기 렌더
+// ══════════════════════════════════════════════
 renderTabs();
 renderContent();
-
-// ── PWA 설치 배너 제어 ──
-let deferredPrompt;
-window.addEventListener('beforeinstallprompt', (e) => {
-  e.preventDefault(); deferredPrompt = e;
-  document.getElementById('install-banner').style.display = 'flex';
-});
-document.getElementById('install-btn')?.addEventListener('click', async () => {
-  if (deferredPrompt) {
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    deferredPrompt = null;
-  }
-  document.getElementById('install-banner').style.display = 'none';
-});
-document.getElementById('install-close')?.addEventListener('click', () => {
-  document.getElementById('install-banner').style.display = 'none';
-});
 </script>
 </body>
 </html>
