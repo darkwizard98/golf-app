@@ -82,4 +82,953 @@
     .coach-section{border:1px solid #eee;border-radius:12px;padding:1rem 1.2rem;margin-bottom:12px;background:#fff;}
     .coach-section-title{font-size:15px;font-weight:700;color:#222;margin-bottom:12px;}
     .coach-section-header{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
-    .coach-badge{font-size:11px;font-weight:
+    .coach-badge{font-size:11px;font-weight:700;color:#fff;padding:4px 10px;border-radius:20px;}
+    .coach-club{font-size:16px;font-weight:700;color:#222;}
+    .coach-problem-box{background:#fff5f5;border-left:3px solid #C0392B;border-radius:0 8px 8px 0;padding:10px 12px;margin-bottom:10px;}
+    .coach-drill-box{background:#f0f6ff;border-left:3px solid #185FA5;border-radius:0 8px 8px 0;padding:10px 12px;margin-bottom:10px;}
+    .coach-label{font-size:11px;font-weight:700;color:#888;margin-bottom:5px;}
+    .coach-text{font-size:13px;color:#333;line-height:1.7;}
+    .ai-intro-card{background:#f8f9fa;border-radius:14px;padding:1.3rem;margin-bottom:18px;border:1px solid #eee;}
+    .ai-intro-title{font-size:16px;font-weight:700;color:#222;margin-bottom:10px;}
+    .ai-intro-desc{font-size:13px;color:#666;line-height:1.6;margin-bottom:16px;}
+    .ai-scope-wrap{display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;}
+    .ai-scope-label{font-size:12px;color:#777;font-weight:600;white-space:nowrap;}
+    .ai-scope-select{font-size:13px;padding:8px 12px;border-radius:8px;border:1px solid #ddd;background:#fff;color:#333;outline:none;min-width:180px;font-family:inherit;-webkit-appearance:none;appearance:none;}
+    .ai-start-btn{width:100%;padding:14px;background:#185FA5;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;}
+    .ai-start-btn:active{background:#0C447C;}
+    .ai-start-btn:disabled{opacity:.7;cursor:default;}
+    .empty-state{text-align:center;padding:3rem 1rem;color:#bbb;font-size:14px;line-height:1.8;}
+    .section-title{font-size:13px;color:#888;margin-bottom:8px;margin-top:4px;}
+    #install-banner{display:none;position:fixed;bottom:0;left:0;right:0;max-width:480px;margin:0 auto;background:#185FA5;color:#fff;padding:14px 16px;z-index:999;align-items:center;gap:10px;}
+    #install-banner p{flex:1;font-size:13px;line-height:1.4;}
+    #install-banner button{padding:7px 14px;border:1.5px solid rgba(255,255,255,.5);border-radius:7px;background:transparent;color:#fff;font-size:13px;cursor:pointer;white-space:nowrap;font-family:inherit;}
+  </style>
+</head>
+<body>
+<div id="app">
+  <div class="tabbar" id="tabbar"></div>
+  <div class="content" id="content"></div>
+</div>
+<div id="install-banner">
+  <p>📲 홈 화면에 추가하면 앱처럼 사용할 수 있어요!</p>
+  <button id="install-btn">추가</button>
+  <button id="install-close" style="border:none;font-size:18px;padding:4px 8px;">✕</button>
+</div>
+<script>
+// ════════════════════════════════════════
+// 상수
+// ════════════════════════════════════════
+const CLUB_FORMS={
+  driver:[
+    {cols:2,row:[{id:"f_dist",label:"거리 (m)",type:"number",placeholder:"예: 210"},{id:"f_shape",label:"구질",type:"select",options:["","스트레이트","드로우","페이드","훅","슬라이스","풀","푸시"]}]},
+    {cols:2,row:[{id:"f_ob",label:"OB 여부",type:"select",options:["없음","OB","페널티구역"],onchange:"onObChange(this.value)"},{id:"f_fw",label:"페어웨이 안착",type:"select",options:["성공","러프","벙커","실패"]}]}
+  ],
+  wood:[
+    {cols:2,row:[{id:"f_clubno",label:"클럽 번호",type:"select",options:["3번","5번"]},{id:"f_dist",label:"거리 (m)",type:"number",placeholder:"예: 190"}]},
+    {cols:2,row:[{id:"f_shape",label:"구질",type:"select",options:["","스트레이트","드로우","페이드","훅","슬라이스","풀","푸시"]},{id:"f_fw",label:"페어웨이 안착",type:"select",options:["성공","러프","벙커","실패"]}]},
+    {cols:1,row:[{id:"f_ob",label:"OB 여부",type:"select",options:["없음","OB","페널티구역"],onchange:"onObChange(this.value)"}]}
+  ],
+  utility:[
+    {cols:2,row:[{id:"f_clubno",label:"클럽 번호",type:"select",options:["3번","5번"]},{id:"f_dist",label:"거리 (m)",type:"number",placeholder:"예: 170"}]},
+    {cols:2,row:[{id:"f_shape",label:"구질",type:"select",options:["","스트레이트","드로우","페이드","훅","슬라이스","풀","푸시"]},{id:"f_fw",label:"페어웨이 안착",type:"select",options:["성공","러프","벙커","실패"]}]},
+    {cols:1,row:[{id:"f_ob",label:"OB 여부",type:"select",options:["없음","OB","페널티구역"],onchange:"onObChange(this.value)"}]}
+  ],
+  iron:[
+    {cols:2,row:[{id:"f_clubno",label:"클럽 번호",type:"select",options:["4번","5번","6번","7번","8번","9번","PW","AW","SW"]},{id:"f_dist",label:"거리 (m)",type:"number",placeholder:"예: 140"}]},
+    {cols:2,row:[{id:"f_shape",label:"구질",type:"select",options:["","스트레이트","드로우","페이드","훅","슬라이스"]},{id:"f_gir",label:"그린 적중",type:"select",options:["","GIR 성공","그린 주변","벙커","미스"]}]}
+  ],
+  approach:[
+    {cols:2,row:[{id:"f_shot",label:"샷",type:"select",options:["칩샷","피치샷"]},{id:"f_dist",label:"거리 (m)",type:"number",placeholder:"예: 36"}]},
+    {cols:1,row:[{id:"f_result",label:"결과",type:"select",options:["","OK존","온그린","온그린 미스"]}]}
+  ],
+  putting:[
+    {cols:2,row:[{id:"f_fputt",label:"첫 퍼팅 거리",type:"select",options:["","5m 이내","10m 이내","10m 이상"]},{id:"f_read",label:"라이",type:"select",options:["","평지","오르막","내리막","슬라이스","훅"]}]},
+    {cols:2,row:[{id:"f_length",label:"거리 감각",type:"select",options:["","짧음","적당","긺"]},{id:"f_putts",label:"퍼팅 수",type:"number",placeholder:"예: 2"}]}
+  ]
+};
+const CLUB_ORDER=["driver","wood","utility","iron","approach","putting"];
+const CLUB_LABELS={driver:"드라이버",wood:"우드",utility:"유틸리티",iron:"아이언",approach:"어프로치",putting:"퍼팅"};
+const TABS=[{id:"rounds",label:"라운드"},{id:"input",label:"샷 입력"},{id:"score",label:"스코어"},{id:"analysis",label:"통계"},{id:"ai",label:"AI 코칭"}];
+const C={green:"#1D9E75",blue:"#185FA5",amber:"#BA7517",red:"#C0392B",purple:"#6C5CE7"};
+
+// ════════════════════════════════════════
+// 상태
+// ════════════════════════════════════════
+const newScorecard=()=>Array.from({length:18},(_,i)=>({hole:i+1,par:4,score:null,note:""}));
+const newRound=(date="")=>({id:Date.now(),date,courseName:"",shots:{},scorecard:newScorecard()});
+
+let S={
+  tab:"rounds",rounds:[],activeId:null,
+  selHole:1,selClub:"driver",formData:{},
+  analysisScope:"all",coachingResult:null
+};
+
+function save(){try{localStorage.setItem("golf_pwa_v2",JSON.stringify({rounds:S.rounds,activeId:S.activeId}));}catch(e){}}
+function load(){try{const d=JSON.parse(localStorage.getItem("golf_pwa_v2")||"null");if(d){S.rounds=d.rounds||[];S.activeId=d.activeId||null;}}catch(e){}}
+load();
+
+const activeRound=()=>S.rounds.find(r=>r.id===S.activeId);
+const fkey=(h,c)=>`${h}_${c}`;
+
+// ════════════════════════════════════════
+// 통계 계산
+// ════════════════════════════════════════
+function computeStats(rounds){
+  let driverDists=[],driverShapes={},fwHits=0,driverCount=0,obCount=0;
+  let girCount=0,ironCount=0,putts=[],onePutts=0,twoPutts=0,threePutts=0;
+  let shortC=0,longC=0,okC=0,lieMap={};
+  let putt5=0,putt10=0,putt10over=0;
+  let puttByDist={"5m 이내":{1:0,2:0,3:0,over:0},"10m 이내":{1:0,2:0,3:0,over:0},"10m 이상":{1:0,2:0,3:0,over:0}};
+  let puttByLie={};
+  let approachClose=0,approachCount=0,totalScores=[],totalPars=[];
+  let frontDiffs=[],backDiffs=[],doubleBogeyOrWorse=0;
+  let missPatterns={driver:{}};
+
+  rounds.forEach(r=>{
+    const sc=r.scorecard.reduce((s,h)=>s+(h.score||0),0);
+    const par=r.scorecard.reduce((s,h)=>s+h.par,0);
+    if(sc>0){totalScores.push(sc);totalPars.push(par);}
+    const front=r.scorecard.slice(0,9).reduce((s,h)=>s+((h.score||h.par)-h.par),0);
+    const back=r.scorecard.slice(9,18).reduce((s,h)=>s+((h.score||h.par)-h.par),0);
+    frontDiffs.push(front);backDiffs.push(back);
+    r.scorecard.forEach(h=>{if(h.score&&h.par&&(h.score-h.par)>=2)doubleBogeyOrWorse++;});
+
+    Object.keys(r.shots).forEach(k=>{
+      const[,club]=k.split("_");const d=r.shots[k];
+      if(club==="driver"){
+        driverCount++;
+        if(d.f_dist)driverDists.push(+d.f_dist);
+        if(d.f_shape)driverShapes[d.f_shape]=(driverShapes[d.f_shape]||0)+1;
+        if(d.f_fw==="성공")fwHits++;
+        if(d.f_ob==="OB"||d.f_ob==="페널티구역")obCount++;
+        const sh=d.f_shape||"없음";
+        if(!missPatterns.driver[sh])missPatterns.driver[sh]={total:0,ob:0,fwMiss:0};
+        missPatterns.driver[sh].total++;
+        if(d.f_ob==="OB"||d.f_ob==="페널티구역")missPatterns.driver[sh].ob++;
+        if(d.f_fw!=="성공")missPatterns.driver[sh].fwMiss++;
+      }
+      if(club==="iron"){ironCount++;if(d.f_gir==="GIR 성공")girCount++;}
+      if(club==="putting"){
+        const pc=d.f_putts?+d.f_putts:0;
+        if(pc){
+          putts.push(pc);
+          if(pc===1)onePutts++;
+          else if(pc===2)twoPutts++;
+          else if(pc>=3)threePutts++;
+        }
+        if(d.f_length==="짧음")shortC++;
+        else if(d.f_length==="긺")longC++;
+        else if(d.f_length==="적당")okC++;
+        if(d.f_read)lieMap[d.f_read]=(lieMap[d.f_read]||0)+1;
+        const dist=d.f_fputt||"";
+        if(dist==="5m 이내")putt5++;
+        else if(dist==="10m 이내")putt10++;
+        else if(dist==="10m 이상")putt10over++;
+        if(dist&&puttByDist[dist]&&pc){
+          if(pc===1)puttByDist[dist][1]++;
+          else if(pc===2)puttByDist[dist][2]++;
+          else if(pc===3)puttByDist[dist][3]++;
+          else puttByDist[dist].over++;
+        }
+        if(d.f_read&&pc){
+          if(!puttByLie[d.f_read])puttByLie[d.f_read]={1:0,2:0,3:0,over:0,total:0};
+          puttByLie[d.f_read].total++;
+          if(pc===1)puttByLie[d.f_read][1]++;
+          else if(pc===2)puttByLie[d.f_read][2]++;
+          else if(pc===3)puttByLie[d.f_read][3]++;
+          else puttByLie[d.f_read].over++;
+        }
+      }
+      if(club==="approach"){
+        approachCount++;
+        if(d.f_result==="OK존"||d.f_result==="온그린")approachClose++;
+      }
+    });
+  });
+
+  const avgDist=driverDists.length?Math.round(driverDists.reduce((a,b)=>a+b,0)/driverDists.length):0;
+  const avgPutts=putts.length?(putts.reduce((a,b)=>a+b,0)/putts.length).toFixed(1):null;
+  const avgScore=totalScores.length?(totalScores.reduce((a,b)=>a+b,0)/totalScores.length).toFixed(1):null;
+  const avgDiff=totalScores.length?((totalScores.reduce((a,b)=>a+b,0)-totalPars.reduce((a,b)=>a+b,0))/totalScores.length).toFixed(1):null;
+  const fwPct=driverCount?Math.round(fwHits/driverCount*100):0;
+  const girPct=ironCount?Math.round(girCount/ironCount*100):0;
+  const topShape=Object.entries(driverShapes).sort((a,b)=>b[1]-a[1])[0]||null;
+  const frontAvg=frontDiffs.length?(frontDiffs.reduce((a,b)=>a+b,0)/frontDiffs.length).toFixed(1):null;
+  const backAvg=backDiffs.length?(backDiffs.reduce((a,b)=>a+b,0)/backDiffs.length).toFixed(1):null;
+
+  return{avgDist,avgPutts,avgScore,avgDiff,fwPct,girPct,driverCount,ironCount,fwHits,girCount,
+    putts,onePutts,twoPutts,threePutts,shortC,longC,okC,lieMap,approachCount,approachClose,
+    topShape,obCount,totalScores,totalPars,putt5,putt10,putt10over,puttByDist,puttByLie,
+    doubleBogeyOrWorse,frontAvg,backAvg,missPatterns};
+}
+
+// ════════════════════════════════════════
+// 고급 분석 엔진
+// ════════════════════════════════════════
+function calculateStrokesLost(s){
+  const ob=s.obCount*2,tp=s.threePutts,gm=(s.ironCount-s.girCount)*0.45,al=(s.approachCount-s.approachClose)*0.35;
+  return{obLoss:ob.toFixed(1),threePuttLoss:tp.toFixed(1),girMissLoss:gm.toFixed(1),approachLoss:al.toFixed(1),total:(ob+tp+gm+al).toFixed(1)};
+}
+
+function estimateHandicap(s){
+  let h=0;
+  h+=(100-s.fwPct)*0.07;
+  h+=(100-s.girPct)*0.11;
+  h+=(parseFloat(s.avgPutts||2)*2.8);
+  h+=s.obCount*0.9;
+  h+=s.doubleBogeyOrWorse*0.4;
+  return Math.max(0,Math.round(h));
+}
+
+function diagnoseGameFlow(s){
+  const issues=[];
+  if(s.obCount>=3)issues.push({severity:10,title:"티샷 리스크 과다",desc:`OB/페널티 ${s.obCount}회 발생으로 약 ${s.obCount*2}타 손실 중`});
+  if(s.fwPct<45&&s.girPct<35)issues.push({severity:9,title:"티샷→세컨샷 연쇄 손실",desc:"티샷 난조가 아이언 정확도까지 영향을 주고 있습니다"});
+  if(s.threePutts>=3)issues.push({severity:8,title:"퍼팅 거리감 문제",desc:`3퍼트 ${s.threePutts}회 — 장거리 퍼팅 거리 조절 개선 필요`});
+  if(s.girPct<30)issues.push({severity:7,title:"그린 적중률 부족",desc:`GIR ${s.girPct}% — 세컨샷 정확도 향상이 시급`});
+  if(s.girPct>50&&parseFloat(s.avgPutts||0)>2.2)issues.push({severity:6,title:"버디 기회 손실",desc:"그린 적중 대비 퍼팅 손실이 큼"});
+  return issues.sort((a,b)=>b.severity-a.severity);
+}
+
+function buildPressureAnalysis(s){
+  if(!s.frontAvg||!s.backAvg)return null;
+  const f=parseFloat(s.frontAvg),b=parseFloat(s.backAvg),diff=b-f;
+  if(diff>=3)return{level:"high",color:C.red,message:`후반 평균 ${b>=0?"+":""}${b}타로 전반(${f>=0?"+":""}${f}) 대비 급격히 무너집니다. 체력·멘탈 관리가 필요합니다.`};
+  if(diff>=1)return{level:"medium",color:C.amber,message:`후반 집중력이 다소 떨어집니다. (전반 ${f>=0?"+":""}${f} / 후반 ${b>=0?"+":""}${b})`};
+  return{level:"good",color:C.green,message:`전반·후반 밸런스가 안정적입니다. (전반 ${f>=0?"+":""}${f} / 후반 ${b>=0?"+":""}${b})`};
+}
+
+function buildDriverNarrative(s){
+  if(s.obCount>=3)return`티샷이 현재 가장 큰 손실 구간입니다. OB/페널티 ${s.obCount}회로 약 ${s.obCount*2}타 이상을 잃고 있습니다.`;
+  if(s.fwPct<45)return`드라이버 방향 편차로 세컨샷 난이도가 높아지고 있습니다. 페어웨이 적중률 ${s.fwPct}% 개선이 필요합니다.`;
+  return`드라이버 안정성은 준수합니다. (페어웨이 ${s.fwPct}%) 전략적 티샷 위치 선정이 다음 과제입니다.`;
+}
+function buildIronNarrative(s){
+  if(s.girPct<25)return`스코어 손실의 핵심은 세컨샷 정확도입니다. GIR ${s.girPct}%로 그린 공략 실패가 반복되고 있습니다.`;
+  if(s.girPct<45)return`아이언 정확도는 중간 수준입니다(GIR ${s.girPct}%). 핀보다 그린 중앙 공략 전략이 효과적입니다.`;
+  return`아이언 플레이는 안정적입니다(GIR ${s.girPct}%). 버디 기회를 높이는 정교한 거리 조절 연습이 필요합니다.`;
+}
+function buildPuttingNarrative(s){
+  if(s.threePutts>=3)return`퍼팅 손실 대부분은 첫 퍼트 거리 조절 실패입니다. 3퍼트 ${s.threePutts}회 — 라그퍼팅 연습이 시급합니다.`;
+  if(s.shortC>s.longC)return`퍼팅이 지속적으로 짧게 끝나고 있습니다. 홀을 지나치지 않으려는 심리가 스트로크를 위축시키고 있습니다.`;
+  if(s.longC>s.shortC)return`퍼팅이 자주 길게 지나칩니다. 백스윙 크기를 줄이고 부드러운 임팩트 연습이 필요합니다.`;
+  return`퍼팅 안정성은 양호합니다. 1.5~2m 단거리 결정력 향상이 핵심입니다.`;
+}
+
+// ════════════════════════════════════════
+// 렌더 헬퍼
+// ════════════════════════════════════════
+function esc(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+function barRow(label,val,color,raw){
+  return`<div class="bar-row"><div class="bar-label">${esc(label)}</div><div class="bar-bg"><div class="bar-fill" style="width:${Math.min(val||0,100)}%;background:${color}"></div></div><div class="bar-val">${raw||val+"%"}</div></div>`;
+}
+function statCard(label,value,sub){
+  return`<div class="stat-card"><div class="stat-label">${esc(label)}</div><div class="stat-value">${esc(String(value))}</div>${sub?`<div class="stat-sub">${esc(sub)}</div>`:""}</div>`;
+}
+
+// ════════════════════════════════════════
+// 탭
+// ════════════════════════════════════════
+function renderTabs(){
+  document.getElementById("tabbar").innerHTML=TABS.map(t=>`<button class="${S.tab===t.id?"active":""}" onclick="setTab('${t.id}')">${t.label}</button>`).join("");
+}
+function setTab(id){S.tab=id;renderTabs();renderContent();}
+
+// ════════════════════════════════════════
+// 라운드 목록
+// ════════════════════════════════════════
+function renderRounds(){
+  let html=`<button class="btn-primary" style="margin-bottom:16px" onclick="createRound()">+ 새 라운드 추가</button>`;
+  if(!S.rounds.length)return html+`<div class="empty-state">아직 라운드가 없습니다.<br/>위 버튼을 눌러 첫 라운드를 시작하세요.</div>`;
+  S.rounds.forEach(r=>{
+    const sc=r.scorecard.reduce((s,h)=>s+(h.score||0),0);
+    const par=r.scorecard.reduce((s,h)=>s+h.par,0);
+    const diff=sc-par;
+    const shotCount=Object.keys(r.shots).length;
+    const doneHoles=Array.from({length:18},(_,i)=>i+1).filter(n=>CLUB_ORDER.every(c=>r.shots[fkey(n,c)])).length;
+    const isActive=r.id===S.activeId;
+    const scColor=sc>0?(diff>0?C.red:diff<0?C.green:"#333"):"#aaa";
+    html+=`<div class="round-card${isActive?" active":""}">
+      <div class="round-card-top">
+        <input class="round-date" type="date" value="${esc(r.date)}" onchange="updateMeta(${r.id},'date',this.value)"/>
+        <div style="display:flex;gap:6px">
+          <button class="btn-sm primary" onclick="selectRound(${r.id})">${isActive?"입력 중":"선택"}</button>
+          <button class="btn-sm danger" onclick="deleteRound(${r.id})">삭제</button>
+        </div>
+      </div>
+      <input class="round-course" placeholder="골프장 이름 (선택)" value="${esc(r.courseName)}" onchange="updateMeta(${r.id},'courseName',this.value)"/>
+      <div class="round-meta">
+        <span>타수: <strong style="color:${scColor}">${sc>0?`${sc}타 (${diff>=0?"+":""}${diff})`:"미입력"}</strong></span>
+        <span>샷: <strong>${shotCount}개</strong></span>
+        <span>완료: <strong>${doneHoles}/18홀</strong></span>
+      </div>
+    </div>`;
+  });
+
+  // ── 명함 광고 배너 ──
+  html+=`<div style="margin-top:24px;border-radius:16px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.12)">
+    <div style="background:linear-gradient(135deg,#7B1A1A 0%,#A52020 60%,#C0392B 100%);padding:18px 20px 14px;display:flex;align-items:center;gap:14px">
+      <div style="width:50px;height:50px;background:#fff;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,0.2)">
+        <div style="text-align:center;line-height:1.2">
+          <div style="font-size:8px;font-weight:900;color:#7B1A1A;letter-spacing:-0.5px">KU</div>
+          <div style="font-size:6px;font-weight:700;color:#7B1A1A;letter-spacing:-0.3px">MEDICINE</div>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:15px;font-weight:800;color:#fff;letter-spacing:-0.3px">고려대학교의료원</div>
+        <div style="font-size:13px;font-weight:600;color:rgba(255,255,255,0.85)">구로 대자인병원</div>
+      </div>
+    </div>
+    <div style="background:#fff;padding:18px 20px">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px">
+        <div>
+          <div style="display:flex;gap:5px;margin-bottom:7px;flex-wrap:wrap">
+            <span style="font-size:10px;background:#7B1A1A18;color:#7B1A1A;padding:3px 8px;border-radius:20px;font-weight:600">전북지역심뇌재활센터장</span>
+            <span style="font-size:10px;background:#185FA518;color:#185FA5;padding:3px 8px;border-radius:20px;font-weight:600">재활센터장</span>
+          </div>
+          <div style="font-size:11px;color:#888;margin-bottom:3px">재활의학과 교수</div>
+          <div style="font-size:26px;font-weight:800;color:#222;letter-spacing:4px">송 광 섭</div>
+        </div>
+        <div style="width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#7B1A1A,#C0392B);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:24px">🏥</div>
+      </div>
+      <div style="height:1px;background:linear-gradient(to right,#7B1A1A44,#eee);margin-bottom:14px"></div>
+      <div style="display:flex;flex-direction:column;gap:9px">
+        <div style="display:flex;align-items:flex-start;gap:10px">
+          <div style="width:28px;height:28px;border-radius:8px;background:#f8f9fa;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px">📍</div>
+          <div style="font-size:12px;color:#444;line-height:1.5;padding-top:5px">전북특별자치도 전주시 덕진구 건원로 390</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:28px;height:28px;border-radius:8px;background:#f8f9fa;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px">📱</div>
+          <div style="font-size:14px;color:#222;font-weight:700;letter-spacing:0.5px">010-5040-1765</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:28px;height:28px;border-radius:8px;background:#f8f9fa;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px">✉️</div>
+          <div style="font-size:12px;color:#185FA5;font-weight:500">kssong@designhospital.co.kr</div>
+        </div>
+      </div>
+      <div style="margin-top:14px;padding-top:12px;border-top:1px solid #f0f0f0;display:flex;gap:5px;flex-wrap:wrap">
+        <span style="font-size:10px;color:#888;background:#f8f9fa;padding:3px 9px;border-radius:20px">#재활의학</span>
+        <span style="font-size:10px;color:#888;background:#f8f9fa;padding:3px 9px;border-radius:20px">#심뇌재활</span>
+        <span style="font-size:10px;color:#888;background:#f8f9fa;padding:3px 9px;border-radius:20px">#고려대의료원</span>
+        <span style="font-size:10px;color:#888;background:#f8f9fa;padding:3px 9px;border-radius:20px">#대자인병원</span>
+      </div>
+    </div>
+  </div>`;
+
+  return html;
+}
+  const r=newRound(new Date().toISOString().slice(0,10));
+  S.rounds.unshift(r);S.activeId=r.id;
+  S.selHole=1;S.selClub="driver";S.formData={};
+  save();setTab("input");
+}
+function deleteRound(id){
+  if(!confirm("이 라운드를 삭제하시겠습니까?"))return;
+  S.rounds=S.rounds.filter(r=>r.id!==id);
+  if(S.activeId===id)S.activeId=null;
+  save();renderContent();
+}
+function updateMeta(id,field,val){const r=S.rounds.find(r=>r.id===id);if(r)r[field]=val;save();}
+function selectRound(id){
+  S.activeId=id;S.selHole=1;S.selClub="driver";
+  S.formData=activeRound()?.shots[fkey(1,"driver")]||{};
+  save();setTab("input");
+}
+
+// ════════════════════════════════════════
+// 샷 입력
+// ════════════════════════════════════════
+function renderInput(){
+  const ar=activeRound();
+  if(!ar)return`<div class="empty-state">라운드 목록에서<br/>라운드를 먼저 선택해 주세요</div>`;
+  let html=`<div class="info-bar"><span>${esc(ar.date)}${ar.courseName?" · "+esc(ar.courseName):""}</span><a href="#" onclick="setTab('rounds');return false;">목록으로</a></div>`;
+
+  // 홀 그리드
+  html+=`<div class="section-title">홀 선택</div><div class="hole-grid">`;
+  for(let n=1;n<=18;n++){
+    const allDone=CLUB_ORDER.every(c=>ar.shots[fkey(n,c)]);
+    const anyDone=CLUB_ORDER.some(c=>ar.shots[fkey(n,c)]);
+    const doneCount=CLUB_ORDER.filter(c=>ar.shots[fkey(n,c)]).length;
+    let cls="hole-btn";
+    if(n===S.selHole)cls+=" selected";
+    else if(allDone)cls+=" done";
+    else if(anyDone)cls+=" partial";
+    html+=`<button class="${cls}" onclick="selHole(${n})"><div>${n}홀</div>${anyDone&&!allDone?`<div class="hole-sub">${doneCount}/6</div>`:""}</button>`;
+  }
+  html+=`</div>`;
+
+  // 클럽 선택
+  html+=`<div class="section-title">클럽 선택</div><div class="club-row">`;
+  CLUB_ORDER.forEach(c=>{
+    const saved=!!ar.shots[fkey(S.selHole,c)];
+    let cls="club-btn"+(c===S.selClub?" selected":saved?" saved":"");
+    html+=`<button class="${cls}" onclick="selClub('${c}')">${CLUB_LABELS[c]}${saved&&c!==S.selClub?" ✓":""}</button>`;
+  });
+  html+=`</div>`;
+
+  // 파/타수 입력
+  const hs=ar.scorecard[S.selHole-1]||{par:4,score:null};
+  html+=`<div class="card" style="margin-bottom:14px;background:#f8f9fa;border:1.5px solid #dde3ed">
+    <div style="font-size:13px;font-weight:600;color:#555;margin-bottom:10px">📌 ${S.selHole}홀 파 / 타수</div>
+    <div class="form-row cols2">
+      <div class="form-group"><label>파 (Par)</label>
+        <select onchange="saveHolePar(this.value)" style="font-size:14px;padding:9px 10px;border:1px solid #ddd;border-radius:8px;background:#fff;font-family:inherit;-webkit-appearance:none">
+          ${[3,4,5].map(p=>`<option value="${p}"${hs.par==p?" selected":""}>${p}</option>`).join("")}
+        </select>
+      </div>
+      <div class="form-group"><label>이 홀 타수</label>
+        <input type="number" min="1" max="15" value="${hs.score||""}" placeholder="예: 5" oninput="saveHoleScore(this.value)" inputmode="numeric"
+          style="font-size:14px;padding:9px 10px;border:1px solid #ddd;border-radius:8px;background:#fff;font-family:inherit;outline:none;width:100%"/>
+      </div>
+    </div>
+  </div>`;
+
+  // 샷 폼
+  const existingShot=!!ar.shots[fkey(S.selHole,S.selClub)];
+  html+=`<div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <div style="font-size:13px;font-weight:600;color:#888">${S.selHole}홀 · ${CLUB_LABELS[S.selClub]}</div>
+      ${existingShot?`<span style="font-size:11px;background:#fff3e0;color:#E65100;padding:3px 8px;border-radius:20px;font-weight:600">✏️ 수정 중</span>`:`<span style="font-size:11px;background:#eef5ff;color:#185FA5;padding:3px 8px;border-radius:20px;font-weight:600">새 입력</span>`}
+    </div>`;
+  CLUB_FORMS[S.selClub].forEach(group=>{
+    html+=`<div class="form-row cols${group.cols}">`;
+    group.row.forEach(f=>{
+      html+=`<div class="form-group"><label>${esc(f.label)}</label>`;
+      if(f.type==="select"){
+        html+=`<select id="f_${f.id}" onchange="fd('${f.id}',this.value);${f.onchange||''}">`;
+        f.options.forEach(o=>html+=`<option value="${esc(o)}"${(S.formData[f.id]||"")==o?" selected":""}>${esc(o)||"선택"}</option>`);
+        html+=`</select>`;
+      }else{
+        html+=`<input type="number" id="f_${f.id}" value="${esc(S.formData[f.id]||"")}" placeholder="${esc(f.placeholder||"")}" oninput="fd('${f.id}',this.value)" inputmode="decimal"/>`;
+      }
+      html+=`</div>`;
+    });
+    html+=`</div>`;
+  });
+
+  const ci=CLUB_ORDER.indexOf(S.selClub),isLast=ci===CLUB_ORDER.length-1;
+  const nextLabel=isLast?(S.selHole<18?`저장 → ${S.selHole+1}홀로`:"저장 (완료)"):`저장 → ${CLUB_LABELS[CLUB_ORDER[ci+1]]} 입력`;
+  if(existingShot){
+    html+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+      <button style="padding:11px;background:#fff;color:#C0392B;border:1.5px solid #C0392B;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit;font-weight:600" onclick="clearShot()">🗑 입력 초기화</button>
+      <button style="padding:11px;background:#185FA5;color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit;font-weight:600" onclick="saveShot()">${nextLabel}</button>
+    </div>`;
+  }else{
+    html+=`<button class="btn-primary" style="margin-top:8px" onclick="saveShot()">${nextLabel}</button>`;
+  }
+  html+=`</div>`;
+  return html;
+}
+
+function selHole(n){S.selHole=n;S.selClub="driver";S.formData=activeRound()?.shots[fkey(n,"driver")]||{};renderContent();}
+function selClub(c){S.selClub=c;S.formData=activeRound()?.shots[fkey(S.selHole,c)]||{};renderContent();}
+function fd(id,val){S.formData[id]=val;}
+function saveHolePar(val){const ar=activeRound();if(ar){ar.scorecard[S.selHole-1].par=+val;save();}}
+function saveHoleScore(val){const ar=activeRound();if(ar){ar.scorecard[S.selHole-1].score=val?+val:null;save();}}
+function onObChange(val){
+  if(val==="OB"||val==="페널티구역"){
+    S.formData["f_fw"]="실패";
+    const fw=document.getElementById("f_f_fw");
+    if(fw)fw.value="실패";
+  }
+}
+function clearShot(){
+  if(!confirm(`${S.selHole}홀 ${CLUB_LABELS[S.selClub]} 입력을 초기화하시겠습니까?`))return;
+  const ar=activeRound();if(!ar)return;
+  delete ar.shots[fkey(S.selHole,S.selClub)];
+  S.formData={};save();renderContent();
+}
+function saveShot(){
+  const ar=activeRound();if(!ar)return;
+  ar.shots[fkey(S.selHole,S.selClub)]={...S.formData};
+  save();
+  const ci=CLUB_ORDER.indexOf(S.selClub);
+  if(ci<CLUB_ORDER.length-1){
+    S.selClub=CLUB_ORDER[ci+1];
+    S.formData=ar.shots[fkey(S.selHole,S.selClub)]||{};
+  }else{
+    const next=S.selHole<18?S.selHole+1:S.selHole;
+    S.selHole=next;S.selClub="driver";
+    S.formData=ar.shots[fkey(next,"driver")]||{};
+  }
+  renderContent();
+  document.getElementById("content").scrollTop=0;
+}
+
+// ════════════════════════════════════════
+// 스코어카드
+// ════════════════════════════════════════
+function renderScore(){
+  const ar=activeRound();
+  if(!ar)return`<div class="empty-state">라운드 목록에서<br/>라운드를 먼저 선택해 주세요</div>`;
+  const sc=ar.scorecard.reduce((s,h)=>s+(h.score||0),0);
+  const par=ar.scorecard.reduce((s,h)=>s+h.par,0);
+  const diff=sc-par;
+  let html=`<div class="info-bar"><span>${esc(ar.date)}${ar.courseName?" · "+esc(ar.courseName):""}</span><a href="#" onclick="setTab('rounds');return false;">목록으로</a></div>`;
+  html+=`<div class="score-header"><div>홀</div><div>파</div><div>타수</div><div>메모</div></div>`;
+  ar.scorecard.forEach((h,i)=>{
+    const d=h.score?h.score-h.par:null;
+    const hColor=d!=null?(d<0?C.green:d===0?"#555":d===1?C.amber:C.red):"#333";
+    html+=`<div class="score-row">
+      <div class="score-hole" style="color:${hColor}">${h.hole}</div>
+      <select class="score-input" onchange="updScore(${i},'par',this.value)">${[3,4,5].map(p=>`<option${h.par==p?" selected":""}>${p}</option>`).join("")}</select>
+      <input class="score-input" type="number" min="1" max="15" value="${h.score||""}" placeholder="-" oninput="updScore(${i},'score',this.value)" inputmode="numeric"/>
+      <input class="score-input" type="text" value="${esc(h.note||"")}" placeholder="메모" oninput="updScore(${i},'note',this.value)" style="text-align:left"/>
+    </div>`;
+  });
+  const scColor=sc>0?(diff>0?C.red:diff<0?C.green:"#333"):"#aaa";
+  html+=`<div style="text-align:right;margin-top:12px"><span style="font-size:13px;color:#888">총 타수: </span><span style="font-size:18px;font-weight:700;color:${scColor}">${sc>0?`${sc}타 (${diff>=0?"+":""}${diff})`:"-"}</span></div>`;
+  return html;
+}
+function updScore(idx,field,val){const ar=activeRound();if(!ar)return;ar.scorecard[idx][field]=field==="note"?val:+val;save();}
+
+// ════════════════════════════════════════
+// 통계
+// ════════════════════════════════════════
+function getLevel(avg){
+  if(!avg)return null;
+  const sc=parseFloat(avg);
+  if(sc<=72)return{label:"스크래치 골퍼",color:"#6C5CE7",desc:"핸디캡 0 이하, 아마추어 최상위"};
+  if(sc<=80)return{label:"싱글 골퍼",color:C.green,desc:"핸디캡 1~9, 상위 5% 아마추어"};
+  if(sc<=90)return{label:"80대 골퍼",color:C.blue,desc:"핸디캡 10~18, 중상위 아마추어"};
+  if(sc<=100)return{label:"90대 골퍼",color:C.amber,desc:"핸디캡 19~27, 중급 아마추어"};
+  if(sc<=110)return{label:"100대 골퍼",color:"#E67E22",desc:"핸디캡 28~36, 초중급"};
+  return{label:"110대 이상",color:C.red,desc:"초보 단계, 기초 연습 필요"};
+}
+
+function renderAnalysis(){
+  let html=`<div class="section-title">분석 범위</div><div class="scope-row">`;
+  html+=`<button class="scope-btn${S.analysisScope==="all"?" active":""}" onclick="setScope('all')">전체 (${S.rounds.length}라운드)</button>`;
+  S.rounds.forEach(r=>{html+=`<button class="scope-btn${S.analysisScope==r.id?" active":""}" onclick="setScope(${r.id})">${esc(r.date)}${r.courseName?" · "+esc(r.courseName):""}</button>`;});
+  html+=`</div>`;
+
+  const ar=S.analysisScope==="all"?S.rounds:S.rounds.filter(r=>r.id==S.analysisScope);
+  if(!ar.length)return html+`<div class="empty-state">데이터가 없습니다</div>`;
+
+  const s=computeStats(ar);
+  const sl=calculateStrokesLost(s);
+  const hdcp=estimateHandicap(s);
+  const pressure=buildPressureAnalysis(s);
+  const flowIssues=diagnoseGameFlow(s);
+  const level=s.avgScore?getLevel(s.avgScore):null;
+
+  // 레벨 카드
+  if(level){
+    html+=`<div style="border:2px solid ${level.color};border-radius:14px;padding:1rem 1.2rem;margin-bottom:16px;background:${level.color}11">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+        <div style="font-size:22px;font-weight:800;color:${level.color}">${s.avgScore}타</div>
+        <div><div style="font-size:15px;font-weight:700;color:${level.color}">${level.label}</div><div style="font-size:12px;color:#666;margin-top:2px">${level.desc}</div></div>
+      </div>
+      <div style="background:${level.color}22;border-radius:8px;padding:8px 12px">
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:#555;margin-bottom:4px"><span>110+</span><span>100대</span><span>90대</span><span>80대</span><span>싱글</span></div>
+        <div style="height:10px;background:#eee;border-radius:5px;overflow:hidden;position:relative">
+          <div style="position:absolute;left:0;top:0;height:100%;width:${Math.max(5,Math.min(100,Math.round((130-parseFloat(s.avgScore))/58*100)))}%;background:${level.color};border-radius:5px"></div>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  // 라운드별 스코어
+  if(s.totalScores.length>0){
+    html+=`<div class="card" style="margin-bottom:14px"><div style="font-size:14px;font-weight:600;margin-bottom:10px">라운드별 스코어</div>`;
+    ar.forEach((r,i)=>{
+      if(!s.totalScores[i])return;
+      const sc=s.totalScores[i],par=s.totalPars[i],diff=sc-par;
+      const lv=getLevel(sc.toFixed(1));
+      html+=`<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid #f5f5f5">
+        <div style="font-size:12px;color:#888;width:72px;flex-shrink:0">${r.date}</div>
+        <div style="font-size:14px;font-weight:700;color:${diff>0?C.red:diff<0?C.green:"#333"}">${sc}타</div>
+        <div style="font-size:12px;color:${diff>0?C.red:diff<0?C.green:"#888"}">(${diff>=0?"+":""}${diff})</div>
+        ${lv?`<div style="font-size:11px;color:${lv.color};background:${lv.color}18;padding:2px 8px;border-radius:20px;margin-left:auto">${lv.label}</div>`:""}
+      </div>`;
+    });
+    html+=`</div>`;
+  }
+
+  // 요약 카드
+  html+=`<div class="stat-grid">`;
+  html+=statCard("드라이버 평균거리",s.avgDist?`${s.avgDist}m`:"-","미터");
+  html+=statCard("페어웨이 적중률",s.driverCount?`${s.fwPct}%`:"-",`드라이버 ${s.fwHits}/${s.driverCount}홀`);
+  html+=statCard("GIR (그린 적중)",s.ironCount?`${s.girPct}%`:"-",`아이언 ${s.girCount}/${s.ironCount}홀`);
+  html+=statCard("평균 퍼팅",s.avgPutts||"-","홀당 평균");
+  html+=statCard("OB/페널티",`${s.obCount}회`,`드라이버 ${s.driverCount}홀 중`);
+  html+=statCard("추정 핸디캡",s.avgScore?`${hdcp}`:"—","AI 추정");
+  html+=`</div>`;
+
+  // 추세 차트
+  if(s.totalScores.length>1){
+    html+=`<div class="card"><div style="font-size:15px;font-weight:600;margin-bottom:10px">라운드별 스코어 추세</div><div class="trend-chart">`;
+    const maxD=Math.max(...s.totalScores.map((sc,j)=>sc-s.totalPars[j]));
+    const minD=Math.min(...s.totalScores.map((sc,j)=>sc-s.totalPars[j]));
+    const range=maxD-minD||1;
+    s.totalScores.forEach((sc,i)=>{
+      const diff=sc-s.totalPars[i],h=Math.max(8,Math.round(((diff-minD)/range)*48)+8);
+      const color=diff>0?C.red:diff<0?C.green:C.blue;
+      html+=`<div class="trend-bar-wrap"><div class="trend-diff" style="color:${color}">${diff>=0?"+":""}${diff}</div><div class="trend-bar" style="height:${h}px;background:${color}"></div><div class="trend-date">${(ar[i]?.date||"").slice(5)}</div></div>`;
+    });
+    html+=`</div></div>`;
+  }
+
+  // 스코어 손실 분석
+  html+=`<div class="card">
+    <div style="font-size:15px;font-weight:700;margin-bottom:4px">📉 스코어 손실 분석</div>
+    <div style="font-size:12px;color:#888;margin-bottom:12px">라운드당 약 <strong style="color:${C.red}">${sl.total}타</strong>를 실수로 잃고 있습니다</div>
+    ${barRow("OB 손실",Math.min(+sl.obLoss*10,100),C.red,`${sl.obLoss}타`)}
+    ${barRow("3퍼트 손실",Math.min(+sl.threePuttLoss*10,100),C.amber,`${sl.threePuttLoss}타`)}
+    ${barRow("GIR 실패",Math.min(+sl.girMissLoss*10,100),C.blue,`${sl.girMissLoss}타`)}
+    ${barRow("숏게임 손실",Math.min(+sl.approachLoss*10,100),C.green,`${sl.approachLoss}타`)}
+  </div>`;
+
+  // 핵심 문제 진단
+  if(flowIssues.length>0){
+    html+=`<div class="card"><div style="font-size:15px;font-weight:700;margin-bottom:12px">⚠️ 핵심 문제 진단</div>`;
+    flowIssues.slice(0,3).forEach((issue,i)=>{
+      const colors=[C.red,C.amber,C.blue];
+      html+=`<div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:10px;padding-bottom:10px;border-bottom:${i<Math.min(2,flowIssues.length-1)?`1px solid #f5f5f5`:`none`}">
+        <div style="width:24px;height:24px;border-radius:50%;background:${colors[i]};color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">${i+1}</div>
+        <div><div style="font-size:13px;font-weight:700;color:#222;margin-bottom:3px">${esc(issue.title)}</div><div style="font-size:12px;color:#666;line-height:1.5">${esc(issue.desc)}</div></div>
+      </div>`;
+    });
+    html+=`</div>`;
+  }
+
+  // 전반/후반 분석
+  if(pressure){
+    html+=`<div class="card">
+      <div style="font-size:15px;font-weight:700;margin-bottom:10px">🔄 전반/후반 분석</div>
+      <div style="display:flex;gap:10px;margin-bottom:10px">
+        <div style="flex:1;background:#f8f9fa;border-radius:8px;padding:10px;text-align:center">
+          <div style="font-size:11px;color:#888;margin-bottom:4px">전반 평균</div>
+          <div style="font-size:18px;font-weight:700;color:${parseFloat(s.frontAvg)>0?C.red:parseFloat(s.frontAvg)<0?C.green:"#333"}">${parseFloat(s.frontAvg)>=0?"+":""}${s.frontAvg}</div>
+        </div>
+        <div style="flex:1;background:#f8f9fa;border-radius:8px;padding:10px;text-align:center">
+          <div style="font-size:11px;color:#888;margin-bottom:4px">후반 평균</div>
+          <div style="font-size:18px;font-weight:700;color:${parseFloat(s.backAvg)>0?C.red:parseFloat(s.backAvg)<0?C.green:"#333"}">${parseFloat(s.backAvg)>=0?"+":""}${s.backAvg}</div>
+        </div>
+      </div>
+      <div style="padding:10px 12px;background:${pressure.color}18;border-left:3px solid ${pressure.color};border-radius:0 8px 8px 0;font-size:13px;color:#333;line-height:1.6">${esc(pressure.message)}</div>
+    </div>`;
+  }
+
+  // 드라이버
+  html+=`<div class="card"><div style="display:flex;justify-content:space-between;margin-bottom:8px"><span style="font-size:15px;font-weight:600">드라이버</span><span class="badge badge-blue">${s.driverCount}홀</span></div>`;
+  if(s.topShape)html+=`<div style="font-size:12px;color:#888;margin-bottom:6px">주요 구질: <strong>${s.topShape[0]}</strong> (${s.topShape[1]}회)</div>`;
+  html+=`<div style="font-size:12px;color:#555;line-height:1.6;margin-bottom:10px;padding:8px 10px;background:#f8f9fa;border-radius:8px">${esc(buildDriverNarrative(s))}</div>`;
+  html+=barRow("페어웨이 적중률",s.fwPct,C.green,`${s.fwPct}% (${s.fwHits}/${s.driverCount})`);
+  html+=barRow("평균 거리",s.avgDist?Math.round(s.avgDist/250*100):0,C.blue,s.avgDist?`${s.avgDist}m`:"-");
+  html+=barRow("OB/페널티",s.driverCount?Math.round(s.obCount/s.driverCount*100):0,C.red,`${s.obCount}회`);
+  html+=`</div>`;
+
+  // 아이언
+  html+=`<div class="card"><div style="display:flex;justify-content:space-between;margin-bottom:8px"><span style="font-size:15px;font-weight:600">아이언</span><span class="badge badge-blue">${s.ironCount}홀</span></div>`;
+  html+=`<div style="font-size:12px;color:#555;line-height:1.6;margin-bottom:10px;padding:8px 10px;background:#f8f9fa;border-radius:8px">${esc(buildIronNarrative(s))}</div>`;
+  html+=barRow("GIR (그린 적중)",s.girPct,C.blue,`${s.girPct}% (${s.girCount}/${s.ironCount})`);
+  html+=`</div>`;
+
+  // 어프로치
+  html+=`<div class="card"><div style="display:flex;justify-content:space-between;margin-bottom:8px"><span style="font-size:15px;font-weight:600">어프로치</span><span class="badge badge-blue">${s.approachCount}홀</span></div>`;
+  html+=barRow("OK존",s.approachCount?Math.round(s.approachClose/s.approachCount*100):0,C.amber,`${s.approachClose}/${s.approachCount}홀`);
+  html+=`</div>`;
+
+  // 퍼팅 상세
+  html+=`<div class="card"><div style="display:flex;justify-content:space-between;margin-bottom:12px"><span style="font-size:15px;font-weight:600">퍼팅 상세 분석</span><span class="badge badge-blue">${s.putts.length}홀</span></div>`;
+  html+=`<div style="font-size:12px;color:#555;line-height:1.6;margin-bottom:12px;padding:8px 10px;background:#f8f9fa;border-radius:8px">${esc(buildPuttingNarrative(s))}</div>`;
+
+  if(s.avgPutts){
+    const p1=s.onePutts,p2=s.twoPutts,p3=s.threePutts,pt=s.putts.length||1;
+    html+=`<div style="display:flex;gap:10px;margin-bottom:14px">
+      <div style="flex:1;background:#f0f6ff;border-radius:10px;padding:10px;text-align:center">
+        <div style="font-size:11px;color:#888;margin-bottom:4px">평균 퍼팅수</div>
+        <div style="font-size:22px;font-weight:700;color:${C.blue}">${s.avgPutts}</div>
+      </div>
+      <div style="flex:2;background:#f8f9fa;border-radius:10px;padding:10px">
+        <div style="font-size:11px;color:#888;margin-bottom:6px">전체 퍼팅수 분포</div>
+        <div style="display:flex;gap:4px;align-items:flex-end;height:36px;margin-bottom:4px">
+          ${[[p1,C.green,"1"],[p2,C.blue,"2"],[p3,C.red,"3+"]].map(([cnt,c,l])=>{
+            const pct=Math.round(cnt/pt*100);
+            return`<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">
+              <div style="font-size:10px;font-weight:600;color:${c}">${pct}%</div>
+              <div style="width:100%;background:${c};border-radius:3px 3px 0 0;height:${Math.max(4,pct*0.36)}px"></div>
+            </div>`;
+          }).join("")}
+        </div>
+        <div style="display:flex;gap:4px">
+          ${[[p1,"1퍼팅",C.green],[p2,"2퍼팅",C.blue],[p3,"3퍼팅+",C.red]].map(([cnt,l,c])=>`<div style="flex:1;text-align:center;font-size:10px;color:${c};font-weight:500">${l}<br/>${cnt}회</div>`).join("")}
+        </div>
+      </div>
+    </div>`;
+  }
+
+  // 거리별 퍼팅 분포
+  const distKeys=["5m 이내","10m 이내","10m 이상"];
+  if(distKeys.some(k=>Object.values(s.puttByDist[k]).reduce((a,b)=>a+b,0)>0)){
+    html+=`<div style="font-size:13px;font-weight:600;color:#333;margin-bottom:10px">거리별 퍼팅수 확률</div>`;
+    distKeys.forEach(dk=>{
+      const d=s.puttByDist[dk],total=d[1]+d[2]+d[3]+d.over;
+      if(!total)return;
+      html+=`<div style="margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:5px">
+          <span style="font-size:12px;font-weight:600;color:#555">${dk}</span>
+          <span style="font-size:11px;color:#999">${total}홀</span>
+        </div>
+        <div style="display:flex;height:22px;border-radius:6px;overflow:hidden;gap:1px">
+          ${[[d[1],C.green],[d[2],C.blue],[d[3],C.amber],[d.over,C.red]].map(([cnt,c])=>{
+            const pct=Math.round(cnt/total*100);
+            return pct>0?`<div style="flex:${pct};background:${c};display:flex;align-items:center;justify-content:center">${pct>8?`<span style="font-size:10px;color:#fff;font-weight:600">${pct}%</span>`:""}</div>`:"";
+          }).join("")}
+        </div>
+        <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap">
+          ${[[d[1],C.green,"1퍼팅"],[d[2],C.blue,"2퍼팅"],[d[3],C.amber,"3퍼팅"],[d.over,C.red,"4+"]].map(([cnt,c,l])=>cnt>0?`<div style="font-size:11px;color:${c}">● ${l} ${Math.round(cnt/total*100)}% (${cnt}회)</div>`:"").join("")}
+        </div>
+      </div>`;
+    });
+  }
+
+  // 라이별 퍼팅 분포
+  const lieKeys=Object.keys(s.puttByLie);
+  if(lieKeys.length>0){
+    html+=`<div style="font-size:13px;font-weight:600;color:#333;margin:14px 0 10px">라이 유형별 퍼팅수 확률</div>`;
+    lieKeys.forEach(lk=>{
+      const ld=s.puttByLie[lk],lt=ld.total||1;
+      html+=`<div style="margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:5px">
+          <span style="font-size:12px;font-weight:600;color:#555">${lk}</span>
+          <span style="font-size:11px;color:#999">${ld.total}홀</span>
+        </div>
+        <div style="display:flex;height:22px;border-radius:6px;overflow:hidden;gap:1px">
+          ${[[ld[1],C.green],[ld[2],C.blue],[ld[3],C.amber],[ld.over,C.red]].map(([cnt,c])=>{
+            const pct=Math.round(cnt/lt*100);
+            return pct>0?`<div style="flex:${pct};background:${c};display:flex;align-items:center;justify-content:center">${pct>8?`<span style="font-size:10px;color:#fff;font-weight:600">${pct}%</span>`:""}</div>`:"";
+          }).join("")}
+        </div>
+        <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap">
+          ${[[ld[1],C.green,"1퍼팅"],[ld[2],C.blue,"2퍼팅"],[ld[3],C.amber,"3퍼팅"],[ld.over,C.red,"4+"]].map(([cnt,c,l])=>cnt>0?`<div style="font-size:11px;color:${c}">● ${l} ${Math.round(cnt/lt*100)}% (${cnt}회)</div>`:"").join("")}
+        </div>
+      </div>`;
+    });
+  }
+
+  // 거리 감각
+  const tot3=s.shortC+s.longC+s.okC;
+  if(tot3>0){
+    html+=`<div style="font-size:13px;font-weight:600;color:#333;margin:14px 0 10px">거리 감각</div>`;
+    html+=barRow("짧음",Math.round(s.shortC/tot3*100),C.red,`${s.shortC}회`);
+    html+=barRow("적당",Math.round(s.okC/tot3*100),C.green,`${s.okC}회`);
+    html+=barRow("긺",Math.round(s.longC/tot3*100),C.amber,`${s.longC}회`);
+  }
+  html+=`</div>`;
+  return html;
+}
+function setScope(v){S.analysisScope=v;renderContent();}
+
+// ════════════════════════════════════════
+// AI 코칭 (통계 기반, 외부 API 없음)
+// ════════════════════════════════════════
+function generateCoaching(ar){
+  const s=computeStats(ar);
+  const items=[];
+
+  // 드라이버
+  if(s.driverCount>0){
+    const obRate=Math.round(s.obCount/s.driverCount*100),fwFail=100-s.fwPct;
+    const shape=s.topShape?s.topShape[0]:"";
+    let prob,drill;
+    if(obRate>=20){
+      prob=`드라이버 OB/페널티 비율이 ${obRate}%로 매우 높습니다. ${s.obCount}회 OB로 약 ${s.obCount*2}타를 잃고 있습니다.`;
+      drill="1. 티샷 목표를 페어웨이 넓은 쪽으로 설정하세요.\n2. 스윙 크기를 80%로 줄이고 임팩트에 집중하세요.\n3. 하프스윙 50개→풀스윙 50개 교대 연습을 하세요.\n4. 라운드 전 반드시 목표를 정하고 시작하세요.";
+    }else if(s.fwPct<40){
+      prob=`페어웨이 적중률이 ${s.fwPct}%로 낮습니다. ${s.driverCount-s.fwHits}홀에서 페어웨이를 놓쳐 세컨샷이 어려워지고 있습니다.`;
+      drill=`1. ${shape==="슬라이스"||shape==="페이드"?"그립을 스트롱으로 바꾸고 인아웃 스윙을 연습하세요.":shape==="훅"||shape==="드로우"?"스탠스를 약간 오픈하고 아웃인 스윙을 연습하세요.":"어드레스 시 어깨와 발끝이 목표와 평행한지 확인하세요."}\n2. 발을 모으고 스윙해 균형감각을 키우세요.\n3. 티 높이를 낮춰 어퍼블로우를 줄이세요.\n4. 주 3회 방향성 위주로 50개씩 연습하세요.`;
+    }else if(shape==="슬라이스"||shape==="훅"){
+      prob=`드라이버 구질이 주로 ${shape}로 나옵니다. 페어웨이 적중률 ${s.fwPct}%로 방향 편차가 있습니다.`;
+      drill=shape==="슬라이스"
+        ?"1. 그립을 스트롱으로 바꿔 왼손 너클이 2-3개 보이게 잡으세요.\n2. 다운스윙 시 오른쪽 팔꿈치를 몸 쪽으로 붙이세요.\n3. 공 오른쪽 10cm에 페트병을 놓고 치지 않는 인아웃 연습을 하세요.\n4. 거울 앞에서 임팩트 포지션을 매일 체크하세요."
+        :"1. 그립을 뉴트럴로 조정하고 왼손 너클 2개만 보이게 잡으세요.\n2. 하체가 먼저 돌아오는 다운스윙을 연습하세요.\n3. 공 왼쪽 10cm에 클럽을 놓고 바깥쪽으로 치는 연습을 하세요.\n4. 피니시에서 클럽이 왼쪽 어깨 위로 오는지 확인하세요.";
+    }else{
+      prob=`드라이버 평균 거리 ${s.avgDist}m, 페어웨이 적중률 ${s.fwPct}%로 양호합니다.`;
+      drill="1. 현재 스윙 리듬과 템포를 유지하세요.\n2. 라운드 전 5~10개 워밍업으로 감각을 유지하세요.\n3. 바람·코스 상황에 따른 클럽 선택 판단력을 키우세요.";
+    }
+    items.push({club:"드라이버",score:obRate*2+fwFail,prob,drill});
+  }
+
+  // 아이언
+  if(s.ironCount>0){
+    let prob,drill;
+    if(s.girPct<20){
+      prob=`그린 적중률(GIR)이 ${s.girPct}%로 매우 낮습니다. ${s.ironCount}홀 중 ${s.girCount}홀만 그린에 올렸습니다.`;
+      drill="1. 7번 아이언으로 100m 목표에 30개씩 집중 연습하세요.\n2. 볼을 스탠스 중앙 약간 오른쪽에 놓고 다운블로우로 치세요.\n3. 다운스윙 전 오른쪽 무릎이 안쪽으로 먼저 움직이게 연습하세요.\n4. 아이언별 비거리를 기록해두세요.";
+    }else if(s.girPct<40){
+      prob=`그린 적중률(GIR)이 ${s.girPct}%입니다. 절반 이상 홀에서 그린을 놓치고 있습니다.`;
+      drill="1. 핀이 아닌 그린 중앙을 목표로 공략하세요.\n2. 클럽 선택 시 한 클럽 크게 선택해 풀스윙을 피하세요.\n3. 150m/130m/110m 구간별 클럽 거리를 확인하세요.\n4. 바람·경사·라이를 고려한 클럽 선택 루틴을 만드세요.";
+    }else{
+      prob=`GIR ${s.girPct}%로 준수한 수준입니다. 핀 공략 정확도를 높이면 버디 기회가 늘어납니다.`;
+      drill="1. 핀 위치에 따라 공략 방향을 세분화하는 연습을 하세요.\n2. 단거리 아이언(8~9번)으로 핀 3m 이내 공략 연습에 집중하세요.\n3. 코스 라운드 시 핀 위치별 공략 기록을 남겨보세요.";
+    }
+    items.push({club:"아이언",score:100-s.girPct,prob,drill});
+  }
+
+  // 퍼팅
+  if(s.putts.length>0){
+    const threeRate=Math.round(s.threePutts/s.putts.length*100);
+    const tot=s.shortC+s.longC+s.okC;
+    const shortRate=tot>0?Math.round(s.shortC/tot*100):0;
+    const longRate=tot>0?Math.round(s.longC/tot*100):0;
+    let prob,drill;
+    if(threeRate>=20){
+      prob=`3퍼팅 비율이 ${threeRate}%로 높습니다. ${s.threePutts}회의 3퍼팅이 스코어를 직접 올리고 있습니다.`;
+      drill="1. 5m/8m/10m에서 홀 1m 이내 라그퍼팅을 매일 20개씩 연습하세요.\n2. 첫 퍼팅 목표를 홀 주변 1m 원으로 설정하는 습관을 들이세요.\n3. 백스윙 크기로 거리를 조절하세요: 10cm=2m, 20cm=4m.\n4. 라운드 전 10m 라그퍼팅 5개로 그린 스피드를 파악하세요.";
+    }else if(shortRate>=40){
+      prob=`퍼팅이 짧게 끝나는 경우가 ${shortRate}%로 많습니다. 홀 앞에서 멈추는 패턴이 반복되고 있습니다.`;
+      drill="1. '홀 30cm 지나치기' 목표로 연습하세요.\n2. 임팩트 후 1초간 헤드업을 하지 않는 연습을 하세요.\n3. 오르막 퍼팅 연습에 집중하세요.\n4. 3m 오르막 퍼팅 10개 연속 성공하기를 목표로 하세요.";
+    }else if(longRate>=40){
+      prob=`퍼팅이 길게 지나치는 경우가 ${longRate}%로 많습니다.`;
+      drill="1. 백스윙 크기를 현재의 70%로 줄이는 연습을 하세요.\n2. 내리막 퍼팅 연습에 집중하세요.\n3. 3m에서 홀을 지나치지 않는 퍼팅 10개 연속 성공 연습을 하세요.\n4. 메트로놈으로 일정 템포를 유지하는 연습을 하세요.";
+    }else{
+      prob=`평균 퍼팅 수 ${s.avgPutts}개 수준입니다. 1퍼팅 ${s.onePutts}회, 3퍼팅 ${s.threePutts}회로 단거리 성공률 향상이 필요합니다.`;
+      drill="1. 1m 퍼팅 10개 연속 성공하기를 매일 연습하세요.\n2. 퍼팅 루틴을 정하고 모든 퍼팅에서 동일하게 실행하세요.\n3. 홀 뒤·옆·앞에서 각도별로 경사를 파악하는 습관을 들이세요.";
+    }
+    items.push({club:"퍼팅",score:threeRate+shortRate+longRate,prob,drill});
+  }
+
+  // 어프로치
+  if(s.approachCount>0){
+    const okRate=Math.round(s.approachClose/s.approachCount*100);
+    let prob,drill;
+    if(okRate<30){
+      prob=`어프로치 OK존 성공률이 ${okRate}%로 낮습니다. ${s.approachCount}홀 중 ${s.approachClose}홀만 OK존에 붙였습니다.`;
+      drill="1. 칩샷은 체중 70%를 왼발에 두고 핸드퍼스트로 치세요.\n2. 10m 이내는 퍼터처럼 낮게 굴리는 칩샷을 우선 선택하세요.\n3. 피치샷은 백스윙과 팔로우스루 크기를 동일하게 유지하세요.\n4. 10m/20m/30m 거리별 탄착점을 체득하는 연습을 하세요.";
+    }else{
+      prob=`어프로치 OK존 성공률 ${okRate}%로 준수합니다.`;
+      drill="1. 러프·경사면 등 다양한 라이에서 어프로치 연습을 늘리세요.\n2. 벙커 어프로치 연습: 모래를 떠내듯 치는 연습을 주 1회 하세요.\n3. 바람 상황에서 낮은 탄도로 치는 펀치샷을 익히세요.";
+    }
+    items.push({club:"어프로치",score:100-okRate,prob,drill});
+  }
+
+  items.sort((a,b)=>b.score-a.score);
+  const top3=items.slice(0,3);
+
+  // 종합 진단
+  const sl=calculateStrokesLost(s);
+  const hdcp=estimateHandicap(s);
+  const pressure=buildPressureAnalysis(s);
+  const flowIssues=diagnoseGameFlow(s);
+
+  let summary="";
+  if(s.avgScore){
+    const dNum=parseFloat(s.avgDiff)||0;
+    const lv=dNum<=0?"싱글 수준의 훌륭한":dNum<=10?"80대의 준수한":dNum<=20?"90대 중급":"100타대 입문";
+    const ds=s.avgDiff!=null?`(파 대비 ${parseFloat(s.avgDiff)>=0?"+":""}${s.avgDiff})`:"";
+    summary=`${ar.length}개 라운드 평균 ${s.avgScore}타 ${ds}, 추정 핸디캡 ${hdcp}의 ${lv} 골퍼입니다.\n\n`;
+    summary+=`현재 라운드당 약 ${sl.total}타를 실수로 잃고 있으며, 가장 큰 손실 영역은 ${flowIssues[0]?.title||"퍼팅"}입니다.`;
+    if(pressure)summary+=`\n\n${pressure.message}`;
+  }else{
+    summary=`${ar.length}개 라운드 데이터를 분석했습니다. 스코어카드에 타수를 입력하면 더 정확한 진단이 가능합니다.`;
+  }
+  if(top3.length>0)summary+=`\n\n가장 시급한 개선 영역은 ${top3.map(i=>i.club).join(", ")}입니다. 특히 ${top3[0].club} 집중 연습이 가장 효과적입니다.`;
+
+  // 체크리스트
+  const checklist=[];
+  if(s.obCount>=3)checklist.push(`드라이버 OB ${s.obCount}회: 라운드 전 80% 스윙으로 방향성 집중 연습 10개`);
+  else if(s.obCount>0)checklist.push("드라이버 티샷 전 목표 지점을 페어웨이 넓은 쪽으로 설정하기");
+  if(s.girPct<40)checklist.push(`GIR ${s.girPct}%: 아이언별 정확한 비거리를 기록해 스마트폰에 저장하기`);
+  if(s.threePutts>=3)checklist.push(`3퍼트 ${s.threePutts}회: 라운드 전 10m 라그퍼팅 5개로 그린 스피드 파악하기`);
+  else if(s.putts.length>0)checklist.push("라운드 전 1m 퍼팅 10개 연속 성공으로 단거리 자신감 키우기");
+  if(s.approachCount>0&&Math.round(s.approachClose/s.approachCount*100)<40)checklist.push("라운드 전날 어프로치 30분: 10m/20m/30m 거리별 10개씩 집중 연습");
+  checklist.push("미스샷 직후 원인 분석 금지: 다음 샷에만 집중하는 멘탈 루틴 유지");
+  if(pressure?.level==="high")checklist.push("후반 체력 관리: 10홀부터 루틴 속도를 늦추고 호흡 정리하기");
+
+  return{summary,items:top3,checklist:checklist.slice(0,4)};
+}
+
+function renderAI(){
+  let scopeOptions=`<option value="all">전체 라운드 합산</option>`;
+  S.rounds.forEach(r=>{scopeOptions+=`<option value="${r.id}"${S.analysisScope==r.id?" selected":""}>${esc(r.date)}${r.courseName?" ("+esc(r.courseName)+")":""}</option>`;});
+
+  let html=`<div class="ai-intro-card">
+    <div class="ai-intro-title">🏌️ 맞춤 코칭 리포트</div>
+    <p class="ai-intro-desc">입력된 통계를 바탕으로 취약 부분을 진단하고, 구체적인 연습 방법을 안내해 드립니다.</p>
+    <div class="ai-scope-wrap">
+      <label class="ai-scope-label">분석 범위</label>
+      <select class="ai-scope-select" onchange="setScope(this.value)">${scopeOptions}</select>
+    </div>
+    <button class="ai-start-btn" onclick="runCoaching()" ${!S.rounds.length?"disabled":""}>📊 코칭 리포트 생성</button>
+  </div>`;
+
+  if(S.coachingResult){
+    const cr=S.coachingResult;
+    html+=`<div class="coach-section"><div class="coach-section-title">📋 종합 진단</div><div class="coach-text">${esc(cr.summary)}</div></div>`;
+    cr.items.forEach((item,i)=>{
+      const bc=i===0?"#C0392B":i===1?"#BA7517":"#185FA5";
+      html+=`<div class="coach-section">
+        <div class="coach-section-header">
+          <span class="coach-badge" style="background:${bc}">${i+1}순위 보완</span>
+          <span class="coach-club">${esc(item.club)}</span>
+        </div>
+        <div class="coach-problem-box"><div class="coach-label">⚠ 문제점</div><div class="coach-text">${esc(item.prob)}</div></div>
+        <div class="coach-drill-box"><div class="coach-label">💪 연습 방법</div><div class="coach-text">${esc(item.drill)}</div></div>
+      </div>`;
+    });
+    if(cr.checklist.length){
+      html+=`<div class="coach-section"><div class="coach-section-title">✅ 다음 라운드 전 체크리스트</div><div style="display:flex;flex-direction:column;gap:8px">`;
+      cr.checklist.forEach(c=>{
+        html+=`<div style="display:flex;gap:10px;align-items:flex-start">
+          <div style="width:22px;height:22px;border:2px solid #185FA5;border-radius:5px;flex-shrink:0;margin-top:1px"></div>
+          <div style="font-size:13px;color:#333;line-height:1.5">${esc(c)}</div>
+        </div>`;
+      });
+      html+=`</div></div>`;
+    }
+  }
+  return html;
+}
+
+function runCoaching(){
+  if(!S.rounds.length){alert("먼저 라운드 데이터를 입력해 주세요.");return;}
+  try{
+    const ar=S.analysisScope==="all"?S.rounds:S.rounds.filter(r=>r.id==S.analysisScope);
+    if(!ar.length){alert("선택한 범위에 데이터가 없습니다.");return;}
+    S.coachingResult=generateCoaching(ar);
+  }catch(e){
+    S.coachingResult={summary:`분석 중 오류: ${e.message}\n\n데이터를 더 입력 후 다시 시도해 주세요.`,items:[],checklist:[]};
+  }
+  renderContent();
+}
+
+// ════════════════════════════════════════
+// 메인 렌더
+// ════════════════════════════════════════
+function renderContent(){
+  const el=document.getElementById("content");
+  if(S.tab==="rounds")el.innerHTML=renderRounds();
+  else if(S.tab==="input")el.innerHTML=renderInput();
+  else if(S.tab==="score")el.innerHTML=renderScore();
+  else if(S.tab==="analysis")el.innerHTML=renderAnalysis();
+  else if(S.tab==="ai")el.innerHTML=renderAI();
+}
+
+// ════════════════════════════════════════
+// PWA
+// ════════════════════════════════════════
+if("serviceWorker"in navigator)navigator.serviceWorker.register("./sw.js").catch(()=>{});
+
+let deferredPrompt=null;
+window.addEventListener("beforeinstallprompt",e=>{
+  e.preventDefault();deferredPrompt=e;
+  document.getElementById("install-banner").style.display="flex";
+});
+document.getElementById("install-btn").onclick=async()=>{
+  if(!deferredPrompt)return;
+  deferredPrompt.prompt();
+  await deferredPrompt.userChoice;
+  deferredPrompt=null;
+  document.getElementById("install-banner").style.display="none";
+};
+document.getElementById("install-close").onclick=()=>{
+  document.getElementById("install-banner").style.display="none";
+};
+
+renderTabs();
+renderContent();
+</script>
+</body>
+</html>
