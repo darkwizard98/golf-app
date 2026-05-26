@@ -10,6 +10,99 @@
   <link rel="manifest" href="./manifest.json"/>
   <link rel="apple-touch-icon" href="./icon-192.png"/>
   <title>골프 샷 분석기</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+    html,body{height:100%;background:#f5f7fa;font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;}
+    #app{max-width:480px;margin:0 auto;background:#fff;min-height:100vh;display:flex;flex-direction:column;}
+    .tabbar{display:flex;overflow-x:auto;border-bottom:1.5px solid #eee;background:#fff;position:sticky;top:0;z-index:100;scrollbar-width:none;}
+    .tabbar::-webkit-scrollbar{display:none;}
+    .tabbar button{padding:12px 14px;font-size:13px;border:none;background:none;cursor:pointer;white-space:nowrap;color:#999;border-bottom:2.5px solid transparent;margin-bottom:-1.5px;font-family:inherit;}
+    .tabbar button.active{color:#185FA5;border-bottom-color:#185FA5;font-weight:600;}
+    .content{padding:1rem;flex:1;overflow-y:auto;}
+    .btn-primary{width:100%;padding:13px;background:#185FA5;color:#fff;border:none;border-radius:10px;font-size:14px;cursor:pointer;font-weight:600;font-family:inherit;}
+    .btn-primary:active{background:#0C447C;}
+    .btn-primary:disabled{background:#a0b8d4;cursor:not-allowed;}
+    .btn-sm{padding:6px 13px;font-size:12px;border:1.5px solid #ddd;border-radius:7px;background:#f8f9fa;cursor:pointer;font-weight:500;font-family:inherit;color:#555;}
+    .btn-sm.danger{border-color:#fcc;color:#c00;}
+    .btn-sm.primary{border-color:#185FA5;background:#185FA5;color:#fff;}
+    .card{border:1px solid #eee;border-radius:12px;padding:1rem 1.2rem;margin-bottom:10px;}
+    .badge{font-size:11px;padding:3px 9px;border-radius:20px;}
+    .badge-blue{background:#eef5ff;color:#185FA5;}
+    .info-bar{background:#eef5ff;border-radius:8px;padding:8px 12px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;}
+    .info-bar span{font-size:13px;color:#185FA5;font-weight:600;}
+    .info-bar a{font-size:12px;color:#185FA5;text-decoration:none;}
+    .round-card{border:1.5px solid #eee;border-radius:12px;padding:1rem 1.2rem;margin-bottom:10px;background:#fff;}
+    .round-card.active{border-color:#185FA5;background:#f0f6ff;}
+    .round-card-top{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+    .round-date{font-size:15px;font-weight:700;color:#222;border:none;background:transparent;flex:1;font-family:inherit;}
+    .round-course{font-size:13px;border:none;border-bottom:1px solid #eee;background:transparent;color:#666;width:100%;margin-bottom:8px;padding-bottom:4px;outline:none;font-family:inherit;}
+    .round-meta{display:flex;gap:14px;flex-wrap:wrap;}
+    .round-meta span{font-size:12px;color:#888;}
+    .round-meta strong{color:#333;}
+    .hole-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:5px;margin-bottom:16px;}
+    .hole-btn{padding:6px 2px;font-size:12px;line-height:1.4;border:1.5px solid #e0e0e0;border-radius:7px;cursor:pointer;text-align:center;background:#f8f9fa;color:#666;font-family:inherit;}
+    .hole-btn.selected{background:#185FA5;color:#fff;border-color:#185FA5;font-weight:600;}
+    .hole-btn.done{background:#eafaf4;color:#1D9E75;}
+    .hole-btn.partial{background:#fffbe6;color:#BA7517;}
+    .hole-sub{font-size:10px;}
+    .club-row{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:14px;}
+    .club-btn{padding:6px 11px;font-size:12px;border-radius:20px;border:1.5px solid #ddd;background:#f8f9fa;color:#666;cursor:pointer;font-family:inherit;}
+    .club-btn.selected{background:#185FA5;color:#fff;border-color:#185FA5;font-weight:600;}
+    .club-btn.saved{background:#eafaf4;color:#1D9E75;border-color:#1D9E75;}
+    .form-row{display:grid;gap:12px;margin-bottom:12px;}
+    .form-row.cols2{grid-template-columns:1fr 1fr;}
+    .form-row.cols1{grid-template-columns:1fr;}
+    .form-group{display:flex;flex-direction:column;gap:4px;}
+    .form-group label{font-size:12px;color:#888;}
+    .form-group select,.form-group input{font-size:14px;padding:9px 10px;border:1px solid #ddd;border-radius:8px;background:#f8f9fa;color:#333;font-family:inherit;outline:none;-webkit-appearance:none;appearance:none;}
+    .form-group select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23999' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px;}
+    .form-group input[type=number]{-moz-appearance:textfield;}
+    .score-header{display:grid;grid-template-columns:36px 52px 52px 1fr;gap:8px;font-size:12px;color:#888;font-weight:600;padding:4px 0;border-bottom:1px solid #eee;margin-bottom:4px;}
+    .score-row{display:grid;grid-template-columns:36px 52px 52px 1fr;gap:8px;align-items:center;padding:5px 0;border-bottom:1px solid #f5f5f5;}
+    .score-hole{font-size:13px;font-weight:700;}
+    .score-input{font-size:13px;padding:5px 6px;border:1px solid #e0e0e0;border-radius:6px;background:#f8f9fa;width:100%;font-family:inherit;text-align:center;}
+    .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;}
+    .stat-card{background:#f8f9fa;border-radius:10px;padding:12px 14px;}
+    .stat-label{font-size:11px;color:#888;margin-bottom:4px;}
+    .stat-value{font-size:20px;font-weight:700;color:#1a1a1a;}
+    .stat-sub{font-size:11px;color:#aaa;margin-top:2px;}
+    .bar-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+    .bar-label{font-size:12px;color:#888;width:72px;flex-shrink:0;}
+    .bar-bg{flex:1;height:8px;background:#f0f0f0;border-radius:4px;overflow:hidden;}
+    .bar-fill{height:100%;border-radius:4px;transition:width .4s;}
+    .bar-val{font-size:12px;color:#888;width:42px;text-align:right;}
+    .trend-chart{display:flex;gap:5px;align-items:flex-end;height:60px;margin-top:4px;}
+    .trend-bar-wrap{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;}
+    .trend-diff{font-size:10px;font-weight:600;}
+    .trend-bar{width:100%;border-radius:3px 3px 0 0;}
+    .trend-date{font-size:9px;color:#aaa;text-align:center;}
+    .scope-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;}
+    .scope-btn{padding:5px 13px;font-size:12px;border-radius:20px;border:1.5px solid #ddd;background:#f8f9fa;color:#666;cursor:pointer;font-family:inherit;}
+    .scope-btn.active{background:#185FA5;color:#fff;border-color:#185FA5;font-weight:600;}
+    .coach-section{border:1px solid #eee;border-radius:12px;padding:1rem 1.2rem;margin-bottom:12px;background:#fff;}
+    .coach-section-title{font-size:15px;font-weight:700;color:#222;margin-bottom:12px;}
+    .coach-section-header{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
+    .coach-badge{font-size:11px;font-weight:700;color:#fff;padding:4px 10px;border-radius:20px;}
+    .coach-club{font-size:16px;font-weight:700;color:#222;}
+    .coach-problem-box{background:#fff5f5;border-left:3px solid #C0392B;border-radius:0 8px 8px 0;padding:10px 12px;margin-bottom:10px;}
+    .coach-drill-box{background:#f0f6ff;border-left:3px solid #185FA5;border-radius:0 8px 8px 0;padding:10px 12px;margin-bottom:10px;}
+    .coach-label{font-size:11px;font-weight:700;color:#888;margin-bottom:5px;}
+    .coach-text{font-size:13px;color:#333;line-height:1.7;}
+    .ai-intro-card{background:#f8f9fa;border-radius:14px;padding:1.3rem;margin-bottom:18px;border:1px solid #eee;}
+    .ai-intro-title{font-size:16px;font-weight:700;color:#222;margin-bottom:10px;}
+    .ai-intro-desc{font-size:13px;color:#666;line-height:1.6;margin-bottom:16px;}
+    .ai-scope-wrap{display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;}
+    .ai-scope-label{font-size:12px;color:#777;font-weight:600;white-space:nowrap;}
+    .ai-scope-select{font-size:13px;padding:8px 12px;border-radius:8px;border:1px solid #ddd;background:#fff;color:#333;outline:none;min-width:180px;font-family:inherit;-webkit-appearance:none;appearance:none;}
+    .ai-start-btn{width:100%;padding:14px;background:#185FA5;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;}
+    .ai-start-btn:active{background:#0C447C;}
+    .ai-start-btn:disabled{opacity:.7;cursor:default;}
+    .empty-state{text-align:center;padding:3rem 1rem;color:#bbb;font-size:14px;line-height:1.8;}
+    .section-title{font-size:13px;color:#888;margin-bottom:8px;margin-top:4px;}
+    #install-banner{display:none;position:fixed;bottom:0;left:0;right:0;max-width:480px;margin:0 auto;background:#185FA5;color:#fff;padding:14px 16px;z-index:999;align-items:center;gap:10px;}
+    #install-banner p{flex:1;font-size:13px;line-height:1.4;}
+    #install-banner button{padding:7px 14px;border:1.5px solid rgba(255,255,255,.5);border-radius:7px;background:transparent;color:#fff;font-size:13px;cursor:pointer;white-space:nowrap;font-family:inherit;}
+  </style>
 </head>
 <body>
 <div id="app">
@@ -225,54 +318,10 @@ function renderRounds(){
     </div>`;
   });
 
-  // ── 명함 광고 배너 ──
-  html+=`<div style="margin-top:24px;border-radius:16px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.12)">
-    <div style="background:linear-gradient(135deg,#7B1A1A 0%,#A52020 60%,#C0392B 100%);padding:18px 20px 14px;display:flex;align-items:center;gap:14px">
-      <div style="width:50px;height:50px;background:#fff;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,0.2)">
-        <div style="text-align:center;line-height:1.2">
-          <div style="font-size:8px;font-weight:900;color:#7B1A1A;letter-spacing:-0.5px">KU</div>
-          <div style="font-size:6px;font-weight:700;color:#7B1A1A;letter-spacing:-0.3px">MEDICINE</div>
-        </div>
-      </div>
-      <div>
-        <div style="font-size:15px;font-weight:800;color:#fff;letter-spacing:-0.3px">고려대학교의료원</div>
-        <div style="font-size:13px;font-weight:600;color:rgba(255,255,255,0.85)">구로 대자인병원</div>
-      </div>
-    </div>
-    <div style="background:#fff;padding:18px 20px">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px">
-        <div>
-          <div style="display:flex;gap:5px;margin-bottom:7px;flex-wrap:wrap">
-            <span style="font-size:10px;background:#7B1A1A18;color:#7B1A1A;padding:3px 8px;border-radius:20px;font-weight:600">전북지역심뇌재활센터장</span>
-            <span style="font-size:10px;background:#185FA518;color:#185FA5;padding:3px 8px;border-radius:20px;font-weight:600">재활센터장</span>
-          </div>
-          <div style="font-size:11px;color:#888;margin-bottom:3px">재활의학과 교수</div>
-          <div style="font-size:26px;font-weight:800;color:#222;letter-spacing:4px">송 광 섭</div>
-        </div>
-        <div style="width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#7B1A1A,#C0392B);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:24px">🏥</div>
-      </div>
-      <div style="height:1px;background:linear-gradient(to right,#7B1A1A44,#eee);margin-bottom:14px"></div>
-      <div style="display:flex;flex-direction:column;gap:9px">
-        <div style="display:flex;align-items:flex-start;gap:10px">
-          <div style="width:28px;height:28px;border-radius:8px;background:#f8f9fa;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px">📍</div>
-          <div style="font-size:12px;color:#444;line-height:1.5;padding-top:5px">전북특별자치도 전주시 덕진구 건원로 390</div>
-        </div>
-        <div style="display:flex;align-items:center;gap:10px">
-          <div style="width:28px;height:28px;border-radius:8px;background:#f8f9fa;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px">📱</div>
-          <div style="font-size:14px;color:#222;font-weight:700;letter-spacing:0.5px">010-5040-1765</div>
-        </div>
-        <div style="display:flex;align-items:center;gap:10px">
-          <div style="width:28px;height:28px;border-radius:8px;background:#f8f9fa;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px">✉️</div>
-          <div style="font-size:12px;color:#185FA5;font-weight:500">kssong@designhospital.co.kr</div>
-        </div>
-      </div>
-      <div style="margin-top:14px;padding-top:12px;border-top:1px solid #f0f0f0;display:flex;gap:5px;flex-wrap:wrap">
-        <span style="font-size:10px;color:#888;background:#f8f9fa;padding:3px 9px;border-radius:20px">#재활의학</span>
-        <span style="font-size:10px;color:#888;background:#f8f9fa;padding:3px 9px;border-radius:20px">#심뇌재활</span>
-        <span style="font-size:10px;color:#888;background:#f8f9fa;padding:3px 9px;border-radius:20px">#고려대의료원</span>
-        <span style="font-size:10px;color:#888;background:#f8f9fa;padding:3px 9px;border-radius:20px">#대자인병원</span>
-      </div>
-    </div>
+  // ── 하단 서명 ──
+  html+=`<div style="margin-top:24px;padding:14px 0;text-align:center;border-top:1px solid #f0f0f0">
+    <div style="font-size:13px;font-weight:600;color:#555;margin-bottom:4px">송 광 섭</div>
+    <div style="font-size:12px;color:#999">kssong@designhospital.co.kr</div>
   </div>`;
 
   return html;
