@@ -195,14 +195,17 @@ function computeStats(rounds){
         driverCount++;
         if(d.f_dist)driverDists.push(+d.f_dist);
         if(d.f_shape)driverShapes[d.f_shape]=(driverShapes[d.f_shape]||0)+1;
-        if(d.f_fw==="성공")fwHits++;
-        if(d.f_fw)fwDetail[d.f_fw]=(fwDetail[d.f_fw]||0)+1;
+        // 페어웨이 안착: 값이 있을 때만 집계
+        if(d.f_fw){
+          fwDetail[d.f_fw]=(fwDetail[d.f_fw]||0)+1;
+          if(d.f_fw==="성공")fwHits++;
+        }
         if(d.f_ob==="OB"||d.f_ob==="페널티구역")obCount++;
         const sh=d.f_shape||"없음";
         if(!missPatterns.driver[sh])missPatterns.driver[sh]={total:0,ob:0,fwMiss:0};
         missPatterns.driver[sh].total++;
         if(d.f_ob==="OB"||d.f_ob==="페널티구역")missPatterns.driver[sh].ob++;
-        if(d.f_fw!=="성공")missPatterns.driver[sh].fwMiss++;
+        if(d.f_fw&&d.f_fw!=="성공")missPatterns.driver[sh].fwMiss++;
       }
       if(club==="wood"){
         woodCount++;
@@ -246,7 +249,8 @@ function computeStats(rounds){
   const avgPutts=putts.length?(putts.reduce((a,b)=>a+b,0)/putts.length).toFixed(1):null;
   const avgScore=totalScores.length?(totalScores.reduce((a,b)=>a+b,0)/totalScores.length).toFixed(1):null;
   const avgDiff=totalScores.length?((totalScores.reduce((a,b)=>a+b,0)-totalPars.reduce((a,b)=>a+b,0))/totalScores.length).toFixed(1):null;
-  const fwPct=driverCount?Math.round(fwHits/driverCount*100):0;
+  const fwTotal=Object.values(fwDetail).reduce((a,b)=>a+b,0);
+  const fwPct=fwTotal>0?Math.round(fwHits/fwTotal*100):0;
   const girPct=ironCount?Math.round(girCount/ironCount*100):0;
   const topShape=Object.entries(driverShapes).sort((a,b)=>b[1]-a[1])[0]||null;
   const frontAvg=frontDiffs.length?(frontDiffs.reduce((a,b)=>a+b,0)/frontDiffs.length).toFixed(1):null;
@@ -368,7 +372,7 @@ function renderInput(){
   if(!ar)return`<div class="empty-state">라운드 목록에서<br/>라운드를 먼저 선택해 주세요</div>`;
   let html=`<div class="info-bar"><span>${esc(ar.date)}${ar.courseName?" · "+esc(ar.courseName):""}</span><a href="#" onclick="setTab('rounds');return false;">목록으로</a></div>`;
 
-  // ── 홀 그리드 (파/타수 표시) ──
+  // ── 홀 그리드 ──
   html+=`<div class="section-title">홀 선택</div><div class="hole-grid">`;
   for(let n=1;n<=18;n++){
     const hs=ar.scorecard[n-1]||{par:4,score:null};
@@ -378,33 +382,15 @@ function renderInput(){
     if(n===S.selHole)cls+=" selected";
     else if(allDone)cls+=" done";
     else if(anyDone)cls+=" partial";
-    // 하단 작은 텍스트: 파/타수
     const subText=hs.score!=null?`${hs.score}/${hs.par}`:`파${hs.par}`;
     html+=`<button class="${cls}" onclick="selHole(${n})"><div>${n}홀</div><div class="hole-sub">${subText}</div></button>`;
   }
   html+=`</div>`;
 
-  // ── 파 입력 (홀 선택 바로 아래) ──
+  // ── 클럽 선택 ──
   const hs=ar.scorecard[S.selHole-1]||{par:4,score:null};
-  html+=`<div class="card" style="margin-bottom:12px;background:#f8f9fa;border:1.5px solid #dde3ed">
-    <div style="font-size:13px;font-weight:600;color:#555;margin-bottom:10px">📌 ${S.selHole}홀</div>
-    <div class="form-row cols2">
-      <div class="form-group"><label>이 홀 타수</label>
-        <input type="number" min="1" max="15" value="${hs.score||""}" placeholder="예: 5" oninput="saveHoleScore(this.value)" inputmode="numeric"
-          style="font-size:14px;padding:9px 10px;border:1px solid #ddd;border-radius:8px;background:#fff;font-family:inherit;outline:none;width:100%"/>
-      </div>
-      <div class="form-group"><label>정규타수 (Par)</label>
-        <select onchange="saveHolePar(this.value)" style="font-size:14px;padding:9px 10px;border:1px solid #ddd;border-radius:8px;background:#fff;font-family:inherit;-webkit-appearance:none">
-          ${[3,4,5].map(p=>`<option value="${p}"${hs.par==p?" selected":""}>${p}</option>`).join("")}
-        </select>
-      </div>
-    </div>
-  </div>`;
-
-  // ── 클럽 선택 (파3이면 드라이버/우드 제외) ──
   const isPar3=hs.par===3;
   const visibleClubs=isPar3?["utility","iron","approach","putting"]:CLUB_ORDER;
-  // 파3인데 driver/wood 선택 중이면 자동으로 utility로 전환
   if(isPar3&&(S.selClub==="driver"||S.selClub==="wood")){
     S.selClub="utility";
     S.formData=ar.shots[fkey(S.selHole,"utility")]||{};
@@ -419,7 +405,6 @@ function renderInput(){
 
   // ── 샷 폼 ──
   const existingShot=!!ar.shots[fkey(S.selHole,S.selClub)];
-  // 유틸리티 기본값 5번 설정
   if(S.selClub==="utility"&&!S.formData.f_clubno) S.formData.f_clubno="5번";
   html+=`<div class="card">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
@@ -453,6 +438,23 @@ function renderInput(){
     html+=`<button class="btn-primary" style="margin-top:8px" onclick="saveShot()">${nextLabel}</button>`;
   }
   html+=`</div>`;
+
+  // ── 파/타수 입력 (맨 아래, 정규타수 먼저) ──
+  html+=`<div class="card" style="margin-top:4px;background:#f8f9fa;border:1.5px solid #dde3ed">
+    <div style="font-size:13px;font-weight:600;color:#555;margin-bottom:10px">📌 ${S.selHole}홀 파 / 타수</div>
+    <div class="form-row cols2">
+      <div class="form-group"><label>정규타수 (Par)</label>
+        <select onchange="saveHolePar(this.value)" style="font-size:14px;padding:9px 10px;border:1px solid #ddd;border-radius:8px;background:#fff;font-family:inherit;-webkit-appearance:none">
+          ${[3,4,5].map(p=>`<option value="${p}"${hs.par==p?" selected":""}>${p}</option>`).join("")}
+        </select>
+      </div>
+      <div class="form-group"><label>이 홀 타수</label>
+        <input type="number" min="1" max="15" value="${hs.score||""}" placeholder="예: 5" oninput="saveHoleScore(this.value)" inputmode="numeric"
+          style="font-size:14px;padding:9px 10px;border:1px solid #ddd;border-radius:8px;background:#fff;font-family:inherit;outline:none;width:100%"/>
+      </div>
+    </div>
+  </div>`;
+
   return html;
 }
 
